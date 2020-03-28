@@ -1,0 +1,13 @@
+{
+  "extends": ["tslint:latest", "tslint-config-prettier"],
+  "rules": {
+    "interface-name": [true, "never-prefix"],
+    "quotemark": [true, "single"],
+    "no-implicit-dependencies": [true, "dev"],
+    "no-var-keyword": true,
+    "no-parameter-reassignment": true,
+    "no-submodule-imports": false,
+    "prefer-const": false,
+    "typedef": [true, "call-signature"]
+  }
+}
