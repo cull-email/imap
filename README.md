@@ -5,7 +5,7 @@ A minimal IMAP client interface exposing mailboxes, envelopes and messages.
 ## Installation
 
 ```sh
-npm install cull-email-imap
+npm install @cull/imap
 ```
 
 ## Usage
