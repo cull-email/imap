@@ -1,4 +1,4 @@
-# imap for [cull](https://cull.email)
+# imap for [Cull](https://cull.email)
 
 A minimal IMAP client interface exposing mailboxes, envelopes and messages.
 
@@ -11,7 +11,7 @@ npm install @cull/imap
 ## Usage
 
 ```js
-import Client from 'cull-email-imap';
+import Client from '@cull/imap';
 
 // optional `options` passes through to `emailjs-imap-client`
 // see https://github.com/emailjs/emailjs-imap-client#api
