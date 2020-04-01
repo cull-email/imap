@@ -38,8 +38,8 @@ let envelopes = c.envelopes();
 let messages = c.messages('INBOX', '1:3');
 ```
 
-Alternatively, study the [tests](test/index.spec.ts).
+Alternatively, study the [tests](https://github.com/cull-email/imap/blob/master/test/index.spec.ts).
 
 ## Development
 
-[`makefile`](makefile) codifies directives for building, testing, linting and other development oriented tasks.
+[`makefile`](https://github.com/cull-email/imap/blob/master/makefile) codifies directives for building, testing, linting and other development oriented tasks.
