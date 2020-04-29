@@ -2,6 +2,8 @@
 
 clean:
 	rm -rf ./build
+	rm -rf ./coverage
+	rm -rf ./.nyc_output
 
 # https://prettier.io
 pretty:

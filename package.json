@@ -32,7 +32,7 @@
     "@istanbuljs/nyc-config-typescript": "^1.0.1",
     "@types/node": "^13.9.5",
     "@types/uuid": "^7.0.2",
-    "ava": "^3.5.1",
+    "ava": "^3.7.0",
     "hoodiecrow-imap": "^2.1.0",
     "nyc": "^15.0.0",
     "prettier": "^1.19.1",
@@ -53,7 +53,7 @@
     ],
     "failFast": true,
     "files": [
-      "test/*.spec.ts"
+      "src/*.test.ts"
     ],
     "ignoredByWatcher": [
       "build/**/*"
