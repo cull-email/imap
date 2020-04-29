@@ -38,15 +38,35 @@ export interface Configuration {
   options?: tls.ConnectionOptions;
 }
 
+/**
+ * Connection State
+ * @link https://tools.ietf.org/html/rfc3501#section-3
+ */
 export enum State {
+  /**
+   * Logout State
+   * @link https://tools.ietf.org/html/rfc3501#section-3.4
+   */
   Disconnected,
+  /**
+   * Not Authenticated State
+   * @link https://tools.ietf.org/html/rfc3501#section-3.1
+   */
   NotAuthenticated,
+  /**
+   * Authenticated State
+   * @link https://tools.ietf.org/html/rfc3501#section-3.2
+   */
   Authenticated,
+  /**
+   * (Mailbox) Selected State
+   * @link https://tools.ietf.org/html/rfc3501#section-3.3
+   */
   MailboxSelected,
 }
 
 /**
- * An asynchronous IMAP Connection interface leaning toward synchronous.
+ * __An IMAP Connection__
  *
  * Things explicitly not currently implemented:
  * - Insecure (non-TLS-enabled) connections. (https://tools.ietf.org/html/rfc8314)
