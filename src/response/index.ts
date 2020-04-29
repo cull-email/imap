@@ -1,3 +1,5 @@
+import Code from './code';
+
 /**
  * Response Status
  * > Status responses are OK, NO, BAD, PREAUTH and BYE.
@@ -9,25 +11,6 @@ export enum Status {
   BAD     = 'BAD',
   PREAUTH = 'PREAUTH',
   BYE     = 'BYE',
-}
-
-/**
- * Response Code
- * > Status responses MAY include an OPTIONAL "response code".
- * @link https://tools.ietf.org/html/rfc3501#section-7.1
- */
-export enum Code {
-  ALERT          = 'ALERT',
-  BADCHARSET     = 'BADCHARSET',
-  CAPABILITY     = 'CAPABILITY',
-  PARSE          = 'PARSE',
-  PERMANENTFLAGS = 'PERMANENTFLAGS',
-  READONLY       = 'READ-ONLY',
-  READWRITE      = 'READ-WRITE',
-  TRYCREATE      = 'TRYCREATE',
-  UIDNEXT        = 'UIDNEXT',
-  UIDVALIDITY    = 'UIDVALIDITY',
-  UNSEEN         = 'UNSEEN',
 }
 
 /**
@@ -80,9 +63,9 @@ export class Response {
 
   constructor(buffer: Buffer) {
     this.buffer = buffer;
-    let lines = buffer.toString().split('\r\n').filter(l => l !== '');
+    let lines = this.toString().split('\r\n').filter(l => l !== '');
     lines.forEach((line, _) => {
-      let [token, r1] = splitLine(line);
+      let [token, r1] = bisect(line);
       switch(true) {
         case token === '+':
           this.continuation = true;
@@ -96,11 +79,16 @@ export class Response {
           if (token !== '*') {
             this.tag = token;
           }
-          let [status, r2] = splitLine(r1);
+          let [status, r2] = bisect(r1);
           this.status = status as Status;
-          let [code, r3] = getCode(r2);
-          if (r3 !== '') {
-            this.code = code as Code;
+          let [responseCode, r3] = bisect(r2, true);
+          if (responseCode !== undefined) {
+            let [code, text] = bisect(responseCode);
+            if (code !== undefined) {
+              this.code = new Code(code, text);
+            } else {
+              this.code = new Code(responseCode);
+            }
             this.text = r3;
           } else {
             this.text = r2;
@@ -109,22 +97,17 @@ export class Response {
       }
     });
   }
+
+  toString(encoding?: string): string {
+    return this.buffer.toString(encoding);
+  }
 }
 
 export default Response;
 
-export let splitLine = (line: string): string[] => {
-  let m = line.match(/^(\S*)\s(.*)$/);
-  if (!m) {
-    return [line, ''];
-  }
-  return [m[1], m[2]];
-}
-
-export let getCode = (line: string) : string[] => {
-  let m = line.match(/^[\[](\S+)[\]]\s{1}(.*)$/);
-  if (!m) {
-    return [line, ''];
-  }
-  return [m[1], m[2]];
+export let bisect = (input: string, code: boolean = false): [undefined|string,string] => {
+  let matches = code ?
+    input.match(/^[\[](.+)[\]]\s{1}(.*)$/) :
+    input.match(/^(\S*)\s(.*)$/);
+  return !matches ? [undefined, input] : [matches[1], matches[2]];
 }

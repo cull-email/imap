@@ -3,9 +3,15 @@ import { Socket } from 'net';
 import tls, { TLSSocket } from 'tls';
 
 import Command from './command';
-import Response from './response';
+import Response, { Status } from './response';
 
 export interface Preferences {
+  /**
+   * Server Name Indication
+   * @link https://tools.ietf.org/html/rfc8446#section-9.2
+   * @link https://tools.ietf.org/html/rfc6066#section-3
+   */
+  sni?: string; // server_name identifier
   host: string;
   port?: number;
   user: string;
@@ -15,6 +21,12 @@ export interface Preferences {
 }
 
 export interface Configuration {
+  /**
+   * Server Name Indication
+   * @link https://tools.ietf.org/html/rfc8446#section-9.2
+   * @link https://tools.ietf.org/html/rfc6066#section-3
+   */
+  sni?: string;
   host: string;
   port: number;
   user: string;
@@ -60,18 +72,41 @@ export class Connection extends EventEmitter {
     return new Promise((resolve, reject) => {
       try {
         let { host, port } = this.configuration;
-        this.socket = tls.connect({ ...this.configuration.options, host, port }, () => {
+        let servername = this.configuration.sni ?? host;
+        let options = { ...this.configuration.options, host, port, servername };
+        this.socket = tls.connect(options, () => {
           if (!this.socket.authorized) {
             reject(this.socket.authorizationError);
           } else {
             this.connected();
             this.awaitResponse().then(() => {
-              let command = new Command('capability');
-              this.send(command);
-              this.awaitResponse(command.tag).then(() => {
-                resolve(true);
-              }).catch((error) => reject(error));
+              resolve(true);
             }).catch((error) => reject(error));
+          }
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  async login(): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      try {
+        let { user, pass } = this.configuration;
+        let command = new Command('login', `${user} ${pass}`);
+        this.send(command);
+        this.awaitResponse(command.tag).then((response) => {
+          switch(response.status) {
+            case Status.BAD:
+              throw new Error(`Server error: ${response.text}`);
+            case Status.NO:
+              resolve(false);
+              break;
+            case Status.OK:
+              this.state = State.Authenticated;
+              resolve(true);
+              break;
           }
         });
       } catch (error) {
@@ -159,7 +194,7 @@ export class Connection extends EventEmitter {
    */
   emit(event: string | symbol, ...args: any[]): boolean {
     if (event !== 'debug') {
-      super.emit('debug', { event, args});
+      super.emit('debug', { event, ...args});
     }
     return super.emit(event, ...args);
   }
