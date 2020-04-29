@@ -68,7 +68,7 @@ export class Connection extends EventEmitter {
     this.configuration = { ...defaults, ...preferences};
   }
 
-  async connect(): Promise<boolean> {
+  async connect(login: boolean = true): Promise<boolean> {
     return new Promise((resolve, reject) => {
       try {
         let { host, port } = this.configuration;
@@ -80,7 +80,7 @@ export class Connection extends EventEmitter {
           } else {
             this.connected();
             this.awaitResponse().then(() => {
-              resolve(true);
+              resolve(login ? this.login() : true);
             }).catch((error) => reject(error));
           }
         });
