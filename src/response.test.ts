@@ -1,5 +1,5 @@
 import test from 'ava';
-import Response, { Status } from './index';
+import Response, { Status } from './response';
 import { ResponseCode as Code } from './code';
 
 test('Response can process a server ready response', (t) => {

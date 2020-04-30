@@ -84,11 +84,7 @@ export class Response {
           let [responseCode, r3] = bisect(r2, true);
           if (responseCode !== undefined) {
             let [code, text] = bisect(responseCode);
-            if (code !== undefined) {
-              this.code = new Code(code, text);
-            } else {
-              this.code = new Code(responseCode);
-            }
+            this.code = code ? new Code(code, text) : new Code(responseCode);
             this.text = r3;
           } else {
             this.text = r2;
