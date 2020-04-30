@@ -8,6 +8,7 @@ import Connection, {
 } from './connection';
 
 import { Status } from './response';
+import Command from './command';
 
 export let debuggedConnection = (t: ExecutionContext, preferences: Preferences) => {
   let c = new Connection(preferences);
@@ -64,7 +65,7 @@ test('Connection can establish a connection to Gmail', async (t) => {
 });
 
 test('Connection cannot login before connection is established.', async (t) => {
-  let connection = debuggedConnection(t, testPreferences);
+  let connection = testConnection();
   t.is(connection.state, State.Disconnected);
   await t.throwsAsync(connection.login);
   t.is(connection.state, State.Disconnected);
@@ -81,3 +82,32 @@ test('Connection can login', async (t) => {
   }
 });
 
+test('Connection can send a command', async (t) => {
+  let connection = testConnection();
+  try {
+    let connected = await connection.connect();
+    t.is(connected, Status.OK);
+    t.is(connection.state, State.Authenticated);
+    let command = new Command('capability');
+    connection.send(command);
+    await connection.awaitResponse(command.tag).then((response) => {
+      t.is(response.status, Status.OK);
+    }).catch(error => t.fail(error));
+  } catch (error) {
+    t.fail(error);
+  }
+});
+
+test('Connection can send a command and wait for a response', async (t) => {
+  let connection = testConnection();
+  try {
+    let connected = await connection.connect();
+    t.is(connected, Status.OK);
+    t.is(connection.state, State.Authenticated);
+    let command = new Command('capability');
+    let response = await connection.sendAndReceive(command);
+    t.is(response.status, Status.OK);
+  } catch (error) {
+    t.fail(error);
+  }
+});
