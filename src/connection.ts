@@ -5,21 +5,30 @@ import tls, { TLSSocket } from 'tls';
 import Command from './command';
 import Response, { Status } from './response';
 
+/**
+ * User-specified _preferences_
+ */
 export interface Preferences {
   /**
    * Server Name Indication
    * @link https://tools.ietf.org/html/rfc8446#section-9.2
    * @link https://tools.ietf.org/html/rfc6066#section-3
    */
-  sni?: string; // server_name identifier
+  sni?: string;
   host: string;
   port?: number;
   user: string;
   pass: string;
-  timeout?: number; // default timeout (in seconds) for a given command's expected response to be received.
+  /**
+   * Default timeout (in seconds) for a given command's expected response to be received.
+   */
+  timeout?: number;
   options?: tls.ConnectionOptions;
 }
 
+/**
+ * Connection instance _configuration_
+ */
 export interface Configuration {
   /**
    * Server Name Indication
@@ -32,7 +41,7 @@ export interface Configuration {
   user: string;
   pass: string;
   /**
-   * Default timeout for expected responses (in seconds).
+   * Default timeout (in seconds) for a given command's expected response to be received.
    */
   timeout: number;
   options?: tls.ConnectionOptions;
@@ -69,8 +78,7 @@ export enum State {
  * __An IMAP Connection__
  *
  * Things explicitly not currently implemented:
- * - Insecure (non-TLS-enabled) connections. (https://tools.ietf.org/html/rfc8314)
- * - Features required for the "online" access model (i.e. `SUBSCRIBE` and related commands)
+ * - Insecure (non-TLS) connections. (https://tools.ietf.org/html/rfc8314)
  */
 export class Connection extends EventEmitter {
   state: State = State.Disconnected;
@@ -88,7 +96,7 @@ export class Connection extends EventEmitter {
     this.configuration = { ...defaults, ...preferences};
   }
 
-  async connect(login: boolean = true): Promise<boolean> {
+  async connect(login: boolean = true): Promise<Status> {
     return new Promise((resolve, reject) => {
       try {
         let { host, port } = this.configuration;
@@ -98,10 +106,10 @@ export class Connection extends EventEmitter {
           if (!this.socket.authorized) {
             reject(this.socket.authorizationError);
           } else {
-            this.connected();
+            this.connectionEstablished();
             this.awaitResponse().then(() => {
-              resolve(login ? this.login() : true);
-            }).catch((error) => reject(error));
+              resolve(login ? this.login() : Status.OK);
+            }).catch(error => reject(error));
           }
         });
       } catch (error) {
@@ -110,25 +118,41 @@ export class Connection extends EventEmitter {
     });
   }
 
-  async login(): Promise<boolean> {
+  async disconnect(): Promise<Status> {
+    return new Promise((resolve, reject) => {
+      if (this.state !== State.Disconnected) {
+        try {
+          let command = new Command('logout');
+          this.send(command);
+          this.awaitResponse(command.tag).then((response) => {
+            this.socket.end(() => {
+              resolve(response.status);
+            });
+          }).catch(error => reject(error));
+        } catch (error) {
+          reject(error);
+        }
+      } else {
+        resolve(Status.OK);
+      }
+    });
+  }
+
+  async login(): Promise<Status> {
     return new Promise((resolve, reject) => {
       try {
         let { user, pass } = this.configuration;
         let command = new Command('login', `${user} ${pass}`);
         this.send(command);
         this.awaitResponse(command.tag).then((response) => {
-          switch(response.status) {
-            case Status.BAD:
-              throw new Error(`Server error: ${response.text}`);
-            case Status.NO:
-              resolve(false);
-              break;
-            case Status.OK:
-              this.state = State.Authenticated;
-              resolve(true);
-              break;
+          if (response.status === Status.BAD) {
+            throw new Error(`Server error: ${response.text}`);
           }
-        });
+          if (response.status === Status.OK) {
+            this.state = State.Authenticated;
+          }
+          resolve(response.status);
+        }).catch(error => reject(error));
       } catch (error) {
         reject(error);
       }
@@ -136,6 +160,9 @@ export class Connection extends EventEmitter {
   }
 
   send(command: Command): void {
+    if (this.state === State.Disconnected) {
+      throw new Error('Disconnected from server.');
+    }
     this.commands.push(command);
     this.emit('send', command);
     this.socket.write(command.toString());
@@ -185,7 +212,7 @@ export class Connection extends EventEmitter {
   /**
    * Update connection state and configure default emitter relays from connection socket
    */
-  connected(): void {
+  connectionEstablished(): void {
     this.state = State.NotAuthenticated;
     this.emit('connect', 'TLS connection established.');
     this.socket.on('data', (buffer) => {
@@ -207,6 +234,10 @@ export class Connection extends EventEmitter {
       }
       this.emit('close', 'Connection closed.');
     });
+    this.socket.on('error', (error) => {
+      this.emit('error', error);
+      this.socket.end();
+    })
   }
 
   /**
