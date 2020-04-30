@@ -96,6 +96,11 @@ export class Connection extends EventEmitter {
     this.configuration = { ...defaults, ...preferences};
   }
 
+  /**
+   * Establish a connection with the server.
+   * @param login (default: `true`) attempt to automatically login immediately after a connection is established.
+   * @link https://tools.ietf.org/html/rfc3501#section-2.2
+   */
   async connect(login: boolean = true): Promise<Status> {
     return new Promise((resolve, reject) => {
       try {
@@ -118,6 +123,10 @@ export class Connection extends EventEmitter {
     });
   }
 
+  /**
+   * Inform the server the connection should be closed.
+   * @link https://tools.ietf.org/html/rfc3501#section-6.1.3
+   */
   async disconnect(): Promise<Status> {
     return new Promise((resolve, reject) => {
       if (this.state !== State.Disconnected) {
@@ -138,6 +147,10 @@ export class Connection extends EventEmitter {
     });
   }
 
+  /**
+   * Authenticate as a user with the server.
+   * @link https://tools.ietf.org/html/rfc3501#section-6.2.3
+   */
   async login(): Promise<Status> {
     return new Promise((resolve, reject) => {
       try {
@@ -168,19 +181,23 @@ export class Connection extends EventEmitter {
     this.socket.write(command.toString());
   }
 
-  receive(response: Response): void {
-    this.responses.push(response);
-    this.emit('receive', response);
   }
 
   /**
-   * Return the next untagged or a specific tagged response.
+   * Return the immediately next untagged or search for an exsting or upcoming tagged response.
    *
    * @param tag Command tag
    * @param timeout Timeout in seconds
    */
   async awaitResponse(tag?: string, timeout?: number): Promise<Response> {
     return new Promise((resolve, reject) => {
+      // Search prior responses when tag specified.
+      if (tag !== undefined) {
+        let existing = this.responses.find(r => r.tag === tag);
+        if (existing) {
+          resolve(existing);
+        }
+      }
       let t = this.startResponseTimeout(reject, timeout);
       let receiver = (response: Response) => {
         if (tag === undefined || tag === response.tag) {
@@ -197,6 +214,11 @@ export class Connection extends EventEmitter {
     });
   }
 
+  /**
+   * Start a timeout and throw an error or call the `reject` callback when reached.
+   * @param reject callback
+   * @param seconds cutoff time in seconds
+   */
   startResponseTimeout(reject?: (Error) => void, seconds?: number): ReturnType<typeof setTimeout> {
     let timeout = (seconds ?? this.configuration.timeout) * 1000;
     return setTimeout(() => {
@@ -218,7 +240,8 @@ export class Connection extends EventEmitter {
     this.socket.on('data', (buffer) => {
       try {
         let response = new Response(buffer);
-        this.receive(response);
+        this.responses.push(response);
+        this.emit('receive', response);
       } catch (error) {
         this.emit('error', error);
       }
