@@ -181,6 +181,16 @@ export class Connection extends EventEmitter {
     this.socket.write(command.toString());
   }
 
+  /**
+   * Attempt to retrieve the reponse for a given command, automatically sending the command as needed.
+   * @param command Command
+   * @param timeout timeout in seconds
+   */
+  async exchange(command: Command, timeout?: number): Promise<Response> {
+    if (!this.commands.find(c => c === command)) {
+      this.send(command);
+    }
+    return this.awaitResponse(command.tag, timeout);
   }
 
   /**

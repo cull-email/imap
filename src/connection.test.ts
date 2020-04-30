@@ -98,14 +98,14 @@ test('Connection can send a command', async (t) => {
   }
 });
 
-test('Connection can send a command and wait for a response', async (t) => {
+test('Connection can exchange a command for an awaited response', async (t) => {
   let connection = testConnection();
   try {
     let connected = await connection.connect();
     t.is(connected, Status.OK);
     t.is(connection.state, State.Authenticated);
     let command = new Command('capability');
-    let response = await connection.sendAndReceive(command);
+    let response = await connection.exchange(command);
     t.is(response.status, Status.OK);
   } catch (error) {
     t.fail(error);
