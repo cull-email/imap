@@ -1,16 +1,4 @@
-export let PREFIX = 'a';
 export let INCREMENTOR = 1;
-export let PAD = 4;
-
-/**
- * Generate a tag using a globally scoped iterator for use with Commands
- * @link https://tools.ietf.org/html/rfc3501#section-2.2.1
- */
-let Tag = (): string => {
-  let i = String(INCREMENTOR++);
-  while (i.length < PAD) { i = `0${i}` }
-  return `${PREFIX}${i}`;
-}
 
 /**
  * __An IMAP Client Command__
@@ -28,7 +16,7 @@ export class Command {
   constructor(command: string, args?: string, tag?: string) {
     this.command = command;
     this.args = args;
-    this.tag = tag ?? Tag();
+    this.tag = tag ?? String(INCREMENTOR++);
   }
 
   toString(): string {
