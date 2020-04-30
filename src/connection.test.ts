@@ -22,7 +22,7 @@ export let debuggedConnection = (t: ExecutionContext, preferences: Preferences) 
  * Credentials for a fake, functional imap server.
  * @link https://ethereal.email
  */
-let testPreferences = {
+export let testPreferences = {
   host: 'imap.ethereal.email',
   user: 'manuel22@ethereal.email',
   pass: 'RZPfRRKZNnrptYDGmX'
@@ -42,7 +42,7 @@ test('Connection can establish a connection to Fastmail.', async (t) => {
   }
 });
 
-test('Connection can establish a connection to iCloud', async (t) => {
+test('Connection can establish a connection to iCloud.', async (t) => {
   let connection = new Connection({ host: 'imap.mail.me.com', user: '', pass: '' });
   try {
     let connected = await connection.connect(false);
@@ -53,7 +53,7 @@ test('Connection can establish a connection to iCloud', async (t) => {
   }
 });
 
-test('Connection can establish a connection to Gmail', async (t) => {
+test('Connection can establish a connection to Gmail.', async (t) => {
   let connection = new Connection({ host: 'imap.gmail.com', user: '', pass: '' });
   try {
     let connected = await connection.connect(false);
@@ -71,7 +71,7 @@ test('Connection cannot login before connection is established.', async (t) => {
   t.is(connection.state, State.Disconnected);
 });
 
-test('Connection can login', async (t) => {
+test('Connection can login.', async (t) => {
   try {
     let connection = testConnection();
     let connected = await connection.connect();
@@ -82,7 +82,7 @@ test('Connection can login', async (t) => {
   }
 });
 
-test('Connection can send a command', async (t) => {
+test('Connection can send a command.', async (t) => {
   let connection = testConnection();
   try {
     let connected = await connection.connect();
@@ -98,7 +98,7 @@ test('Connection can send a command', async (t) => {
   }
 });
 
-test('Connection can exchange a command for an awaited response', async (t) => {
+test('Connection can exchange a command for an awaited response.', async (t) => {
   let connection = testConnection();
   try {
     let connected = await connection.connect();

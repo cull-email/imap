@@ -1,131 +1,60 @@
 import { v4 as uuid } from 'uuid';
 import { EventEmitter } from 'events';
-import Connection, {
-  Configuration as ClientConfiguration
-} from './connection';
+import Connection, { Preferences as ConnectionPreferences } from './connection';
+import { Status as ResponseStatus, Status } from './response';
+import { Command } from './command';
 
 // import { Mailbox, Message, Envelope } from './types';
 
-export interface Configuration {
-  name?: string;
-  host: string;
-  port?: number;
-  user: string;
-  pass: string;
+export interface Preferences extends ConnectionPreferences {
+  /**
+   * Client Identifier
+   */
+  id?: string;
 }
 
 export default class Client extends EventEmitter {
   name: string;
   connection: Connection;
 
-  constructor(options: Configuration) {
+  constructor(preferences: Preferences) {
     super();
-    this.name = options.name ?? uuid();
-    this.connection = new Connection({
-      host: options.host,
-      port: options.port ?? 993,
-      auth: {
-        user: options.user,
-        pass: options.pass,
-      },
-      options: {
-        requireTLS: true
-      }
-    });
+    this.name = preferences.id ?? uuid();
+    this.connection = new Connection(preferences);
     this.initialize();
   }
 
   initialize(): void {
-    this.connection.on('ready', () => {
-      this.status = State.NotAuthenticated;
-    });
-    this.connection.on('close', () => {
-      this.status = State.Disconnected;
-      this.emit('debug', 'connection closed.');
-    });
     this.connection.on('error', (error) => {
-      this.close();
       this.emit('error', error);
     });
   }
 
-  async connect(authenticate: boolean = true): Promise<boolean> {
-    let { host, port } = this.configuration;
-    return new Promise((resolve, reject) => {
-      this.emit('debug', 'connecting...');
-      this.connection.once('error', reject);
-      this.connection.connect({ host, port });
-      this.connection.once('ready', () => {
-        this.connection.off('error', reject);
-        this.status = State.NotAuthenticated;
-        this.emit('debug', `connected to ${host}:${port}`);
-        if (authenticate) {
-          resolve(this.authenticate());
-        } else {
-          resolve(true);
-        }
-      });
-    });
-    ;
+  async connect(login: boolean = true): Promise<boolean> {
+    let status = await this.connection.connect(login);
+    return Promise.resolve(status === ResponseStatus.OK);
   }
 
-  async execute(command: Command, parameters: string): Promise<Buffer> {
-    if (this.status === State.Disconnected) {
-      let error = `Command ${command} could not be executed. Not connected.`;
-      this.emit('error', error);
+  async disconnect(): Promise<boolean> {
+    let status = await this.connection.disconnect();
+    return Promise.resolve(status === ResponseStatus.OK);
+  }
+
+  async mailboxes(): Promise<string[]> {
+    try {
+      let command = new Command('list', '"" %');
+      let response = await this.connection.exchange(command);
+      if (response.status === Status.OK) {
+
+      } else {
+        return Promise.reject(response);
+      }
+      console.log(this.connection.responses.map(r => r.toString()));
+      return [];
+    } catch (error) {
       return Promise.reject(error);
     }
-    return new Promise((resolve, reject) => {
-      this.connection.once('error', reject);
-      this.connection.on('data', (response) => {
-        this.connection.off('error', reject);
-        resolve(response);
-      })
-      this.emit('debug', `${command} ${parameters}`);
-      this.connection.write(`${command} ${parameters}\r\n`, (error) => {
-        this.emit('debug', error);
-        if (error) {
-          reject(error);
-        }
-      });
-    });
   }
-
-  async authenticate(): Promise<boolean> {
-    if (!this.configuration.auth) return Promise.resolve(false);
-    if (this.status === State.NotAuthenticated) {
-      let { user, pass } = this.configuration.auth;
-      try {
-        let response = await this.execute(Command.Login, `${user} ${pass}`);
-        this.emit('debug', response);
-        return Promise.resolve(true);
-      } catch (error) {
-        return Promise.reject(error);
-      }
-    }
-    return Promise.resolve(true);
-  }
-
-  close(): void {
-    if (!this.connection.destroyed || this.status !== State.Disconnected) {
-      this.connection.destroy();
-    }
-  }
-
-  // async mailboxes(): Promise<Mailbox[]> {
-  //   try {
-  //     await this.client.connect();
-  //     let mailboxes = await this.client
-  //       .listMailboxes()
-  //       .then((root: { children: Mailbox[] }) => root.children);
-  //     this.client.close();
-  //     return mailboxes;
-  //   } catch (error) {
-  //     return this.client.close().then(() => {
-  //       Promise.reject(error);
-  //     });
-  //   }
-  // }
 
   // async envelopes(
   //   mailbox: string = 'INBOX',
