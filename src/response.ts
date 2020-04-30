@@ -1,7 +1,7 @@
 import Code from './code';
 
 /**
- * Response Status
+ * Status Response
  * > Status responses are OK, NO, BAD, PREAUTH and BYE.
  * @link https://tools.ietf.org/html/rfc3501#section-7.1
  */
@@ -11,6 +11,41 @@ export enum Status {
   BAD     = 'BAD',
   PREAUTH = 'PREAUTH',
   BYE     = 'BYE',
+}
+
+/**
+ * Server and Mailbox Status Response
+ * @link https://tools.ietf.org/html/rfc3501#section-7.2
+ */
+export enum ServerState {
+  CAPABILITY = 'CAPABILITY',
+  LIST       = 'LIST',
+  LSUB       = 'LSUB',
+  STATUS     = 'STATUS',
+  SEARCH     = 'SEARCH',
+  FLAGS      = 'FLAGS'
+}
+
+/**
+ * Mailbox Size Response
+ * @link https://tools.ietf.org/html/rfc3501#section-7.3
+ */
+export enum MailboxSize {
+  EXISTS = 'EXISTS',
+  RECENT = 'RECENT'
+}
+export interface MailboxSizeResponseData {
+  size: number;
+  response: MailboxSize;
+}
+
+/**
+ * Message Status Response
+ * @link https://tools.ietf.org/html/rfc3501#section-7.4
+ */
+export enum MessageState {
+  EXPUNGE = 'EXPUNGE',
+  FETCH   = 'FETCH',
 }
 
 /**
@@ -29,12 +64,12 @@ export class Response {
   /**
    * Date object tracking object instantiation -- synonymous to "received" datetime
    */
-  date: Date = new Date();
+  received: Date = new Date();
   /**
    * Server provided data
    * @link https://tools.ietf.org/html/rfc3501#section-2.2.2
    */
-  data?: Response[];
+  data = {};
   /**
    * Server provided human-readable text
    * @link https://tools.ietf.org/html/rfc3501#section-7
@@ -56,42 +91,81 @@ export class Response {
    */
   status?: Status;
   /**
-   * Server response code
+   * Server response codes
    * @link https://tools.ietf.org/html/rfc3501#section-7.1
    */
-  code?: Code;
+  codes: Code[] = [];
 
   constructor(buffer: Buffer) {
     this.buffer = buffer;
     let lines = this.toString().split('\r\n').filter(l => l !== '');
     lines.forEach((line, _) => {
-      let [token, r1] = bisect(line);
-      switch(true) {
-        case token === '+':
-          this.continuation = true;
-          this.text = r1;
-          break;
-        case token === '*' && lines.length > 1:
-          let response = new Response(Buffer.from(line));
-          this.data = this.data ? this.data.concat(response) : [response];
-          break;
-        default:
-          if (token !== '*') {
-            this.tag = token;
-          }
-          let [status, r2] = bisect(r1);
-          this.status = status as Status;
-          let [responseCode, r3] = bisect(r2, true);
-          if (responseCode !== undefined) {
-            let [code, text] = bisect(responseCode);
-            this.code = code ? new Code(code, text) : new Code(responseCode);
-            this.text = r3;
-          } else {
-            this.text = r2;
-          }
-          break;
+      let [token, data] = bisect(line);
+      if (token === '+') {
+        this.continuation = true;
+        this.text = data;
+        return;
       }
+      this.tag = token !== '*' ? token : undefined;
+      this.parseResponse(data);
     });
+  }
+
+  parseResponse(data: string): void {
+    let [atom, remainder] = bisect(data);
+    if (!atom) {
+      return;
+    }
+    switch (true) {
+      case !isNaN(parseInt(atom, 10)) && (remainder in MailboxSize):
+        this.parseMailboxSizeResponse(atom, remainder);
+        break;
+      case (atom in Status):
+        this.parseStatusResponse(atom, remainder);
+        break;
+      case (atom in ServerState):
+        this.parseServerStateResponse(atom, remainder);
+        break;
+    }
+  }
+
+  parseServerStateResponse(key: string, data: string): void {
+    switch (key) {
+      case ServerState.LIST:
+        let m = data.match(/^\((\S+)\)\s(\S+)\s(.+)$/);
+        if (m) {
+          if (!this.data[key]) {
+            this.data[key] = [];
+          }
+          this.data[ServerState.LIST].push({
+            name: unquote(m[3]),
+            delimiter: unquote(m[2]),
+            attributes: m[1].split(` `),
+          });
+        }
+        break;
+    }
+  }
+
+  parseStatusResponse(atom: string, data?: string): void {
+    let status = atom as Status;
+    this.status = status;
+    if (data) {
+      let m = data.match(/^[\[](.+)[\]]\s{1}(.*)$/);
+      if (m) {
+        let [a, b] = bisect(m[1]);
+        let code = a ?
+          new Code(status, a, b, m[2]) :
+          new Code(status, m[1], undefined, m[2]);
+        this.codes.push(code);
+      } else {
+        this.text = data;
+      }
+    }
+  }
+
+  parseMailboxSizeResponse(atom: string, data: string): void {
+    this.data[data as MailboxSize] = parseInt(atom, 10);
   }
 
   toString(encoding?: string): string {
@@ -101,9 +175,11 @@ export class Response {
 
 export default Response;
 
-export let bisect = (input: string, code: boolean = false): [undefined|string,string] => {
-  let matches = code ?
-    input.match(/^[\[](.+)[\]]\s{1}(.*)$/) :
-    input.match(/^(\S*)\s(.*)$/);
+export let bisect = (input: string): [undefined|string,string] => {
+  let matches = input.match(/^(\S*)\s(.*)$/);
   return !matches ? [undefined, input] : [matches[1], matches[2]];
+}
+
+export let unquote = (input: string) : string => {
+  return input.replace(/^"(.*)"$/, '$1');
 }

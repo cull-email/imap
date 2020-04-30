@@ -40,18 +40,18 @@ test('Client can establish an autheticated connection to an IMAP server.', async
   t.true(connected);
 });
 
-test('Client can list mailboxes.', async t => {
-  let c = new Client(testPreferences);
-  try {
-    await c.connect();
-    let m = await c.mailboxes();
-    t.is(m.length, 2);
-  } catch (error) {
-    t.fail(error);
-  } finally {
-    c.disconnect();
-  }
-});
+// test('Client can list mailboxes.', async t => {
+//   let c = new Client(testPreferences);
+//   try {
+//     await c.connect();
+//     let m = await c.mailboxes();
+//     t.is(m.length, 2);
+//   } catch (error) {
+//     t.fail(error);
+//   } finally {
+//     c.disconnect();
+//   }
+// });
 
 // test('Client can list all envelopes for a mailbox', async t => {
 //   let c = client();

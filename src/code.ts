@@ -1,3 +1,5 @@
+import { Status } from './response';
+
 /**
  * Response Code
  * @link https://tools.ietf.org/html/rfc3501#section-7.1
@@ -21,20 +23,24 @@ export enum ResponseCode {
  * @link https://tools.ietf.org/html/rfc3501#section-7.1
  */
 export class Code {
+  status: Status;
   code: ResponseCode;
   data?: any;
+  text?: string;
 
-  constructor(code: string, text?: string) {
+  constructor(status: Status, code: string, data?: string, text?: string) {
     if (!(code in ResponseCode)) {
       throw new Error(`${code} is not a valid response code.`);
     }
+    this.status = status;
     this.code = code as ResponseCode;
+    this.text = text;
     switch(code) {
       case ResponseCode.CAPABILITY:
-        this.data = text?.split(` `);
+        this.data = data?.split(` `);
         break;
       default:
-        this.data = text;
+        this.data = data;
         break;
     }
   }

@@ -34,6 +34,7 @@ export interface Configuration {
    * Server Name Indication
    * @link https://tools.ietf.org/html/rfc8446#section-9.2
    * @link https://tools.ietf.org/html/rfc6066#section-3
+   * @link https://github.com/nodejs/node/issues/28167
    */
   sni?: string;
   host: string;
@@ -176,6 +177,7 @@ export class Connection extends EventEmitter {
     if (this.state === State.Disconnected) {
       throw new Error('Disconnected from server.');
     }
+    command.sent = new Date();
     this.commands.push(command);
     this.emit('send', command);
     this.socket.write(command.toString());
@@ -281,6 +283,20 @@ export class Connection extends EventEmitter {
       super.emit('debug', { event, ...args});
     }
     return super.emit(event, ...args);
+  }
+
+  transactionLog(): Map<Date, string> {
+    let log = new Map();
+    let commands = this.commands.map(c => [c.sent, `> ${c.toString()}`]) as (Date | string)[][];
+    let responses = this.responses.map(r => [r.received, `< ${r.toString()}`]);
+    let merged = commands.concat(responses);
+    merged.sort((a, b) => {
+      if (a[0] < b[0]) return -1;
+      if (a[0] > b[0]) return 1;
+      return 0;
+    });
+    merged.forEach(l => log.set(l[0], l[1]));
+    return log;
   }
 }
 
