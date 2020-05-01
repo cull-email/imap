@@ -4,6 +4,7 @@ import tls, { TLSSocket } from 'tls';
 
 import Command from './command';
 import Response, { Status } from './response';
+import { Code } from './code';
 
 /**
  * User-specified _preferences_
@@ -11,18 +12,34 @@ import Response, { Status } from './response';
 export interface Preferences {
   /**
    * Server Name Indication
+   * @link https://en.wikipedia.org/wiki/Server_Name_Indication
    * @link https://tools.ietf.org/html/rfc8446#section-9.2
-   * @link https://tools.ietf.org/html/rfc6066#section-3
    */
   sni?: string;
+  /**
+   * @link https://en.wikipedia.org/wiki/Hostname
+   */
   host: string;
+  /**
+   * TCP Port
+   * @link https://en.wikipedia.org/wiki/Port_(computer_networking)
+   */
   port?: number;
+  /**
+   * Authentication Username
+   */
   user: string;
+  /**
+   * Authentication Password
+   */
   pass: string;
   /**
    * Default timeout (in seconds) for a given command's expected response to be received.
    */
   timeout?: number;
+  /**
+   * Additional options passed to lower-level TLS Socket.
+   */
   options?: tls.ConnectionOptions;
 }
 
@@ -32,19 +49,34 @@ export interface Preferences {
 export interface Configuration {
   /**
    * Server Name Indication
+   * @link https://en.wikipedia.org/wiki/Server_Name_Indication
    * @link https://tools.ietf.org/html/rfc8446#section-9.2
-   * @link https://tools.ietf.org/html/rfc6066#section-3
-   * @link https://github.com/nodejs/node/issues/28167
    */
-  sni?: string;
+  sni: string;
+  /**
+   * @link https://en.wikipedia.org/wiki/Hostname
+   */
   host: string;
+  /**
+   * TCP Port
+   * @link https://en.wikipedia.org/wiki/Port_(computer_networking)
+   */
   port: number;
+  /**
+   * Authentication Username
+   */
   user: string;
+  /**
+   * Authentication Password
+   */
   pass: string;
   /**
    * Default timeout (in seconds) for a given command's expected response to be received.
    */
   timeout: number;
+  /**
+   * Additional options passed to lower-level TLS Socket.
+   */
   options?: tls.ConnectionOptions;
 }
 
@@ -82,17 +114,31 @@ export enum State {
  * - Insecure (non-TLS) connections. (https://tools.ietf.org/html/rfc8314)
  */
 export class Connection extends EventEmitter {
+  /**
+   * Connection State
+   * @link https://tools.ietf.org/html/rfc3501#section-3
+   */
   state: State = State.Disconnected;
+  /** The TLS Socket utilized for this connnection. */
   socket: TLSSocket = new TLSSocket(new Socket());
+  /** The configuration utilized for this connection. */
   configuration: Configuration;
+  /** A collection of all commands sent to the server on this connection. */
   commands: Command[] = [];
+  /** A collection of all responses received from the server on this connection. */
   responses: Response[] = [];
+  /**
+   * A collection of capabilities the server has communicated.
+   * @link https://tools.ietf.org/html/rfc3501#section-7.2.1
+   */
+  capabilities: string[] = [];
 
   constructor(preferences: Preferences) {
     super();
     let defaults = {
       port: 993,
-      timeout: 10
+      timeout: 10,
+      sni: preferences.host,
     };
     this.configuration = { ...defaults, ...preferences};
   }
@@ -105,8 +151,7 @@ export class Connection extends EventEmitter {
   async connect(login: boolean = true): Promise<Status> {
     return new Promise((resolve, reject) => {
       try {
-        let { host, port } = this.configuration;
-        let servername = this.configuration.sni ?? host;
+        let { host, port, sni: servername } = this.configuration;
         let options = { ...this.configuration.options, host, port, servername };
         this.socket = tls.connect(options, () => {
           if (!this.socket.authorized) {
@@ -244,6 +289,17 @@ export class Connection extends EventEmitter {
   }
 
   /**
+   * Analyze a response and update connection data as applicable.
+   */
+  analyzeResponse(response: Response): void {
+    response.codes.forEach(c => {
+      if (c.code === Code.CAPABILITY && c.status === Status.OK) {
+        this.capabilities = c.data as string[];
+      }
+    });
+  }
+
+  /**
    * Update connection state and configure default emitter relays from connection socket
    */
   connectionEstablished(): void {
@@ -252,6 +308,7 @@ export class Connection extends EventEmitter {
     this.socket.on('data', (buffer) => {
       try {
         let response = new Response(buffer);
+        this.analyzeResponse(response);
         this.responses.push(response);
         this.emit('receive', response);
       } catch (error) {
@@ -272,7 +329,7 @@ export class Connection extends EventEmitter {
     this.socket.on('error', (error) => {
       this.emit('error', error);
       this.socket.end();
-    })
+    });
   }
 
   /**

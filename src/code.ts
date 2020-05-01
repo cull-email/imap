@@ -4,7 +4,7 @@ import { Status } from './response';
  * Response Code
  * @link https://tools.ietf.org/html/rfc3501#section-7.1
  */
-export enum ResponseCode {
+export enum Code {
   ALERT          = 'ALERT',
   BADCHARSET     = 'BADCHARSET',
   CAPABILITY     = 'CAPABILITY',
@@ -22,21 +22,21 @@ export enum ResponseCode {
  * Response Code and associated data
  * @link https://tools.ietf.org/html/rfc3501#section-7.1
  */
-export class Code {
+export class ResponseCode {
   status: Status;
-  code: ResponseCode;
+  code: Code;
   data?: any;
   text?: string;
 
   constructor(status: Status, code: string, data?: string, text?: string) {
-    if (!(code in ResponseCode)) {
+    if (!(code in Code)) {
       throw new Error(`${code} is not a valid response code.`);
     }
     this.status = status;
-    this.code = code as ResponseCode;
+    this.code = code as Code;
     this.text = text;
     switch(code) {
-      case ResponseCode.CAPABILITY:
+      case Code.CAPABILITY:
         this.data = data?.split(` `);
         break;
       default:
@@ -46,4 +46,4 @@ export class Code {
   }
 }
 
-export default Code;
+export default ResponseCode;

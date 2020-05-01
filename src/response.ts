@@ -1,4 +1,4 @@
-import Code from './code';
+import ResponseCode from './code';
 
 /**
  * Status Response
@@ -94,7 +94,7 @@ export class Response {
    * Server response codes
    * @link https://tools.ietf.org/html/rfc3501#section-7.1
    */
-  codes: Code[] = [];
+  codes: ResponseCode[] = [];
 
   constructor(buffer: Buffer) {
     this.buffer = buffer;
@@ -126,11 +126,24 @@ export class Response {
       case (atom in ServerState):
         this.parseServerStateResponse(atom, remainder);
         break;
+      default:
+        throw new Error(`Unprocessed response: ${data}`);
     }
   }
 
   parseServerStateResponse(key: string, data: string): void {
     switch (key) {
+      /**
+       * CAPABILITY Response
+       * @link https://tools.ietf.org/html/rfc3501#section-7.2.1
+       */
+      case ServerState.CAPABILITY:
+        this.data[key] = data.split(` `);
+        break;
+      /**
+       * `LIST` Response
+       * @link https://tools.ietf.org/html/rfc3501#section-7.2.2
+       */
       case ServerState.LIST:
         let m = data.match(/^\((\S+)\)\s(\S+)\s(.+)$/);
         if (m) {
@@ -144,6 +157,8 @@ export class Response {
           });
         }
         break;
+      default:
+        throw new Error(`Unprocessed Server State Response: ${key} ${data}`);
     }
   }
 
@@ -155,8 +170,8 @@ export class Response {
       if (m) {
         let [a, b] = bisect(m[1]);
         let code = a ?
-          new Code(status, a, b, m[2]) :
-          new Code(status, m[1], undefined, m[2]);
+          new ResponseCode(status, a, b, m[2]) :
+          new ResponseCode(status, m[1], undefined, m[2]);
         this.codes.push(code);
       } else {
         this.text = data;

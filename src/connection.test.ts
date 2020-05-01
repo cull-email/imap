@@ -106,6 +106,7 @@ test('Connection can exchange a command for an awaited response.', async (t) => 
     t.is(connection.state, State.Authenticated);
     let command = new Command('capability');
     let response = await connection.exchange(command);
+    t.fail('wip')
     t.is(response.status, Status.OK);
   } catch (error) {
     t.fail(error);
