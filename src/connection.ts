@@ -3,7 +3,7 @@ import { Socket } from 'net';
 import tls, { TLSSocket } from 'tls';
 
 import Command from './command';
-import Response, { Status } from './response';
+import Response, { Status, ServerState } from './response';
 import { Code } from './code';
 
 /**
@@ -131,7 +131,7 @@ export class Connection extends EventEmitter {
    * A collection of capabilities the server has communicated.
    * @link https://tools.ietf.org/html/rfc3501#section-7.2.1
    */
-  capabilities: string[] = [];
+  capabilities: Set<string> = new Set();
 
   constructor(preferences: Preferences) {
     super();
@@ -294,7 +294,12 @@ export class Connection extends EventEmitter {
   analyzeResponse(response: Response): void {
     response.codes.forEach(c => {
       if (c.code === Code.CAPABILITY && c.status === Status.OK) {
-        this.capabilities = c.data as string[];
+          c.data.forEach(capability => this.capabilities.add(capability));
+      }
+    });
+    Object.keys(response.data).forEach(key => {
+      if (key === ServerState.CAPABILITY) {
+        response.data[key].forEach(capability => this.capabilities.add(capability));
       }
     });
   }
@@ -342,7 +347,7 @@ export class Connection extends EventEmitter {
     return super.emit(event, ...args);
   }
 
-  transactionLog(): Map<Date, string> {
+  get log(): Map<Date, string> {
     let log = new Map();
     let commands = this.commands.map(c => [c.sent, `> ${c.toString()}`]) as (Date | string)[][];
     let responses = this.responses.map(r => [r.received, `< ${r.toString()}`]);

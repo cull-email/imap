@@ -7,7 +7,7 @@ import Connection, {
   State
 } from './connection';
 
-import { Status } from './response';
+import { Status, ServerState } from './response';
 import Command from './command';
 
 export let debuggedConnection = (t: ExecutionContext, preferences: Preferences) => {
@@ -106,8 +106,34 @@ test('Connection can exchange a command for an awaited response.', async (t) => 
     t.is(connection.state, State.Authenticated);
     let command = new Command('capability');
     let response = await connection.exchange(command);
-    t.fail('wip')
     t.is(response.status, Status.OK);
+  } catch (error) {
+    t.fail(error);
+  }
+});
+
+test('Connection can store CAPABILITY data received from the server.', async (t) => {
+  let connection = testConnection();
+  try {
+    let connected = await connection.connect();
+    t.is(connected, Status.OK);
+    t.is(connection.state, State.Authenticated);
+    t.true([...connection.capabilities].length > 0);
+    connection.capabilities = new Set();
+    let command = new Command('capability');
+    let response = await connection.exchange(command);
+    t.is(response.status, Status.OK);
+    let capabilityResponse = connection.responses.find(r => {
+      return (
+        (r.data[ServerState.CAPABILITY] !== undefined) &&
+        (r.received > command.sent!)
+      );
+    });
+    if (capabilityResponse) {
+      t.deepEqual(connection.capabilities, new Set(capabilityResponse.data[ServerState.CAPABILITY]));
+    } else {
+      t.fail(`Expected a CAPABILITY response.`);
+    }
   } catch (error) {
     t.fail(error);
   }

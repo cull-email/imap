@@ -49,7 +49,7 @@ export default class Client extends EventEmitter {
       } else {
         return Promise.reject(response);
       }
-      console.log(this.connection.transactionLog());
+      console.log(this.connection.log);
       return [];
     } catch (error) {
       return Promise.reject(error);
