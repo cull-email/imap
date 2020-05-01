@@ -56,3 +56,12 @@ test('Response can process an untagged LIST response.', t => {
   t.is(response.data[ServerState.LIST].length, 1);
   t.deepEqual(response.data[ServerState.LIST][0], {name: 'INBOX', delimiter: '/', attributes: ['\\HasNoChildren']});
 })
+
+test('Response can process a tagged LIST response preceded with multiple untagged lines.', t => {
+  let response = new Response(
+    Buffer.from(`* LIST (\\HasNoChildren \\Drafts) "/" "Drafts"\r\n* LIST (\\HasNoChildren \\Junk) "/" "Junk"\r\n* LIST (\\HasNoChildren \\Sent) "/" "Sent Mail"\r\n* LIST (\\HasNoChildren \\Trash) "/" "Trash"\r\n4 OK LIST completed\r\n`)
+  );
+  t.is(response.tag, '4');
+  t.is(response.status, Status.OK);
+  t.is(response.data[ServerState.LIST].length, 4);
+});

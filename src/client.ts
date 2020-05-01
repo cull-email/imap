@@ -1,10 +1,15 @@
 import { v4 as uuid } from 'uuid';
 import { EventEmitter } from 'events';
 import Connection, { Preferences as ConnectionPreferences } from './connection';
-import { Status as ResponseStatus, Status } from './response';
+import Response, { Status as ResponseStatus, ServerState } from './response';
+import { Code } from './code';
 import { Command } from './command';
 
-// import { Mailbox, Message, Envelope } from './types';
+export interface Mailbox {
+  name: string;
+  delimiter: string;
+  attributes: string[];
+}
 
 export interface Preferences extends ConnectionPreferences {
   /**
@@ -16,6 +21,15 @@ export interface Preferences extends ConnectionPreferences {
 export default class Client extends EventEmitter {
   name: string;
   connection: Connection;
+  /**
+   * A collection of capabilities the server has communicated.
+   * @link https://tools.ietf.org/html/rfc3501#section-7.2.1
+   */
+  capabilities: Set<string> = new Set();
+  /**
+   * A collection of mailboxes
+   */
+  _mailboxes: Map<string, Mailbox> = new Map();
 
   constructor(preferences: Preferences) {
     super();
@@ -28,6 +42,9 @@ export default class Client extends EventEmitter {
     this.connection.on('error', (error) => {
       this.emit('error', error);
     });
+    this.connection.on('receive', (response) => {
+      this.analyzeResponse(response);
+    })
   }
 
   async connect(login: boolean = true): Promise<boolean> {
@@ -40,20 +57,45 @@ export default class Client extends EventEmitter {
     return Promise.resolve(status === ResponseStatus.OK);
   }
 
-  async mailboxes(): Promise<string[]> {
-    try {
-      let command = new Command('list', '"" %');
-      let response = await this.connection.exchange(command);
-      if (response.status === Status.OK) {
-
-      } else {
-        return Promise.reject(response);
+  /**
+   * Analyze a response and update connection data as applicable.
+   */
+  analyzeResponse(response: Response): void {
+    // Response Codes
+    response.codes.forEach(c => {
+      if (c.code === Code.CAPABILITY) {
+          c.data.forEach(capability => this.capabilities.add(capability));
       }
-      console.log(this.connection.log);
-      return [];
-    } catch (error) {
-      return Promise.reject(error);
-    }
+    });
+    // Response Data
+    Object.keys(response.data).forEach(key => {
+      switch (key) {
+        case ServerState.CAPABILITY:
+          response.data[key].forEach(capability => this.capabilities.add(capability));
+          break;
+        case ServerState.LIST:
+          response.data[key].forEach(mailbox => this._mailboxes.set(mailbox.name, mailbox));
+          break;
+      }
+    });
+  }
+
+  async mailboxes(): Promise<Mailbox[]> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        let command = new Command('list', '"" %');
+        let response = await this.connection.exchange(command);
+        if (response.status === ResponseStatus.OK) {
+          return resolve([...this._mailboxes.values()]);
+        } else {
+          return reject(response);
+        }
+        return [];
+      } catch (error) {
+        return reject(error);
+      }
+    });
+
   }
 
   // async envelopes(

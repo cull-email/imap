@@ -3,8 +3,7 @@ import { Socket } from 'net';
 import tls, { TLSSocket } from 'tls';
 
 import Command from './command';
-import Response, { Status, ServerState } from './response';
-import { Code } from './code';
+import Response, { Status } from './response';
 
 /**
  * User-specified _preferences_
@@ -127,11 +126,6 @@ export class Connection extends EventEmitter {
   commands: Command[] = [];
   /** A collection of all responses received from the server on this connection. */
   responses: Response[] = [];
-  /**
-   * A collection of capabilities the server has communicated.
-   * @link https://tools.ietf.org/html/rfc3501#section-7.2.1
-   */
-  capabilities: Set<string> = new Set();
 
   constructor(preferences: Preferences) {
     super();
@@ -289,22 +283,6 @@ export class Connection extends EventEmitter {
   }
 
   /**
-   * Analyze a response and update connection data as applicable.
-   */
-  analyzeResponse(response: Response): void {
-    response.codes.forEach(c => {
-      if (c.code === Code.CAPABILITY && c.status === Status.OK) {
-          c.data.forEach(capability => this.capabilities.add(capability));
-      }
-    });
-    Object.keys(response.data).forEach(key => {
-      if (key === ServerState.CAPABILITY) {
-        response.data[key].forEach(capability => this.capabilities.add(capability));
-      }
-    });
-  }
-
-  /**
    * Update connection state and configure default emitter relays from connection socket
    */
   connectionEstablished(): void {
@@ -313,7 +291,6 @@ export class Connection extends EventEmitter {
     this.socket.on('data', (buffer) => {
       try {
         let response = new Response(buffer);
-        this.analyzeResponse(response);
         this.responses.push(response);
         this.emit('receive', response);
       } catch (error) {

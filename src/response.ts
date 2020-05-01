@@ -145,9 +145,9 @@ export class Response {
        * @link https://tools.ietf.org/html/rfc3501#section-7.2.2
        */
       case ServerState.LIST:
-        let m = data.match(/^\((\S+)\)\s(\S+)\s(.+)$/);
+        let m = data.match(/^\((.+)\)\s(\S+)\s(.+)$/);
         if (m) {
-          if (!this.data[key]) {
+          if (this.data[key] === undefined) {
             this.data[key] = [];
           }
           this.data[ServerState.LIST].push({
