@@ -1,5 +1,5 @@
 import test from 'ava';
-import Client from './client';
+import Client, { Mailbox } from './client';
 import { State } from './connection';
 import { Status, ServerState } from './response';
 import Command from './command';
@@ -37,50 +37,94 @@ test('Client id can be specified.', t => {
   t.is(c.name, 'foo');
 });
 
-test('Client can establish an autheticated connection to an IMAP server.', async t => {
+test('Client can establish an authenticated connection to an IMAP server.', async t => {
   let c = new Client(testPreferences);
   let connected = await c.connect();
   t.true(connected);
+  await c.disconnect();
 });
 
 test('Connection can store CAPABILITY data received from the server.', async (t) => {
-  try {
-    let c = new Client(testPreferences);
-    let connected = await c.connect();
-    t.true(connected);
-    t.is(c.connection.state, State.Authenticated);
-    t.true([...c.capabilities].length > 0);
-    c.capabilities = new Set();
-    let command = new Command('capability');
-    let response = await c.connection.exchange(command);
-    t.is(response.status, Status.OK);
-    let capabilityResponse = c.connection.responses.find(r => {
-      return (
-        (r.data[ServerState.CAPABILITY] !== undefined) &&
-        (r.received > command.sent!)
-      );
-    });
-    if (capabilityResponse) {
-      t.deepEqual(c.capabilities, new Set(capabilityResponse.data[ServerState.CAPABILITY]));
-    } else {
-      t.fail(`Expected a CAPABILITY response.`);
-    }
-  } catch (error) {
-    t.fail(error);
+  let c = new Client(testPreferences);
+  let connected = await c.connect();
+  t.true(connected);
+  t.is(c.connection.state, State.Authenticated);
+  t.true([...c.capabilities].length > 0);
+  c.capabilities = new Set();
+  let command = new Command('capability');
+  let response = await c.connection.exchange(command);
+  t.is(response.status, Status.OK);
+  let capabilityResponse = c.connection.responses.find(r => {
+    return (
+      (r.data[ServerState.CAPABILITY] !== undefined) &&
+      (r.received > command.sent!)
+    );
+  });
+  if (capabilityResponse) {
+    t.deepEqual(c.capabilities, new Set(capabilityResponse.data[ServerState.CAPABILITY]));
+  } else {
+    t.fail(`Expected a CAPABILITY response.`);
   }
+  await c.disconnect();
 });
 
 test('Client can list mailboxes.', async t => {
   let c = new Client(testPreferences);
   try {
     await c.connect();
-    let m = await c.mailboxes();
-    t.is(m.length, 5);
+    let m = await c.mailboxes(true);
+    let expected: Mailbox[] = [
+      {
+        attributes: [
+          '\\HasNoChildren',
+        ],
+        delimiter: '/',
+        name: 'INBOX',
+        path: 'INBOX',
+      },
+      {
+        attributes: [
+          '\\HasNoChildren',
+          '\\Drafts',
+        ],
+        delimiter: '/',
+        name: 'Drafts',
+        path: 'Drafts',
+      },
+      {
+        attributes: [
+          '\\HasNoChildren',
+          '\\Junk',
+        ],
+        delimiter: '/',
+        name: 'Junk',
+        path: 'Junk',
+      },
+      {
+        attributes: [
+          '\\HasNoChildren',
+          '\\Sent',
+        ],
+        delimiter: '/',
+        name: 'Sent Mail',
+        path: 'Sent Mail',
+      },
+      {
+        attributes: [
+          '\\HasNoChildren',
+          '\\Trash',
+        ],
+        delimiter: '/',
+        name: 'Trash',
+        path: 'Trash',
+      }
+    ];
+    t.deepEqual(m, expected);
   } catch (error) {
-    t.fail(error);
-  } finally {
-    c.disconnect();
+    t.log(error);
   }
+
+  await c.disconnect();
 });
 
 // test('Client can list all envelopes for a mailbox', async t => {

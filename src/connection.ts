@@ -142,7 +142,7 @@ export class Connection extends EventEmitter {
    * @param login (default: `true`) attempt to automatically login immediately after a connection is established.
    * @link https://tools.ietf.org/html/rfc3501#section-2.2
    */
-  async connect(login: boolean = true): Promise<Status> {
+  async connect(login: boolean = true): Promise<Response> {
     return new Promise((resolve, reject) => {
       try {
         let { host, port, sni: servername } = this.configuration;
@@ -152,8 +152,8 @@ export class Connection extends EventEmitter {
             reject(this.socket.authorizationError);
           } else {
             this.connectionEstablished();
-            this.awaitResponse().then(() => {
-              resolve(login ? this.login() : Status.OK);
+            this.awaitResponse().then((response) => {
+              resolve(login ? this.login() : response);
             }).catch(error => reject(error));
           }
         });
@@ -167,7 +167,7 @@ export class Connection extends EventEmitter {
    * Inform the server the connection should be closed.
    * @link https://tools.ietf.org/html/rfc3501#section-6.1.3
    */
-  async disconnect(): Promise<Status> {
+  async disconnect(): Promise<Response> {
     return new Promise((resolve, reject) => {
       if (this.state !== State.Disconnected) {
         try {
@@ -175,14 +175,14 @@ export class Connection extends EventEmitter {
           this.send(command);
           this.awaitResponse(command.tag).then((response) => {
             this.socket.end(() => {
-              resolve(response.status);
+              response.status === Status.OK ? resolve(response) : reject(response);
             });
           }).catch(error => reject(error));
         } catch (error) {
           reject(error);
         }
       } else {
-        resolve(Status.OK);
+        resolve(undefined);
       }
     });
   }
@@ -191,7 +191,7 @@ export class Connection extends EventEmitter {
    * Authenticate as a user with the server.
    * @link https://tools.ietf.org/html/rfc3501#section-6.2.3
    */
-  async login(): Promise<Status> {
+  async login(): Promise<Response> {
     return new Promise((resolve, reject) => {
       try {
         let { user, pass } = this.configuration;
@@ -204,7 +204,7 @@ export class Connection extends EventEmitter {
           if (response.status === Status.OK) {
             this.state = State.Authenticated;
           }
-          resolve(response.status);
+          resolve(response);
         }).catch(error => reject(error));
       } catch (error) {
         reject(error);

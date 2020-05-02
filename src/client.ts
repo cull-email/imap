@@ -7,6 +7,7 @@ import { Command } from './command';
 
 export interface Mailbox {
   name: string;
+  path: string;
   delimiter: string;
   attributes: string[];
 }
@@ -48,13 +49,19 @@ export default class Client extends EventEmitter {
   }
 
   async connect(login: boolean = true): Promise<boolean> {
-    let status = await this.connection.connect(login);
-    return Promise.resolve(status === ResponseStatus.OK);
+    let response = await this.connection.connect(login);
+    if (response.status === ResponseStatus.OK) {
+      return Promise.resolve(true);
+    }
+    return Promise.reject(response);
   }
 
   async disconnect(): Promise<boolean> {
-    let status = await this.connection.disconnect();
-    return Promise.resolve(status === ResponseStatus.OK);
+    let response = await this.connection.disconnect();
+    if (response.status === ResponseStatus.OK) {
+      return Promise.resolve(true);
+    }
+    return Promise.reject(response);
   }
 
   /**
@@ -80,17 +87,21 @@ export default class Client extends EventEmitter {
     });
   }
 
-  async mailboxes(): Promise<Mailbox[]> {
+  /**
+   * Get Mailboxes
+   * @param recursive
+   */
+  async mailboxes(recursive: boolean = false): Promise<Mailbox[]> {
     return new Promise(async (resolve, reject) => {
       try {
-        let command = new Command('list', '"" %');
+        let wildcard = recursive ? '*' : '%';
+        let command = new Command('list', `"" ${wildcard}`);
         let response = await this.connection.exchange(command);
         if (response.status === ResponseStatus.OK) {
           return resolve([...this._mailboxes.values()]);
         } else {
           return reject(response);
         }
-        return [];
       } catch (error) {
         return reject(error);
       }

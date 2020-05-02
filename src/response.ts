@@ -98,7 +98,7 @@ export class Response {
 
   constructor(buffer: Buffer) {
     this.buffer = buffer;
-    let lines = this.toString().split('\r\n').filter(l => l !== '');
+    let lines = this.toString('ascii').split('\r\n').filter(l => l !== '');
     lines.forEach((line, _) => {
       let [token, data] = bisect(line);
       if (token === '+') {
@@ -150,11 +150,11 @@ export class Response {
           if (this.data[key] === undefined) {
             this.data[key] = [];
           }
-          this.data[ServerState.LIST].push({
-            name: unquote(m[3]),
-            delimiter: unquote(m[2]),
-            attributes: m[1].split(` `),
-          });
+          let path = unquote(m[3]);
+          let delimiter = unquote(m[2]);
+          let name = path.split(delimiter).pop();
+          let attributes = m[1].split(` `);
+          this.data[ServerState.LIST].push({ name, path, delimiter, attributes });
         }
         break;
       default:
