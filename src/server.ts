@@ -1,6 +1,6 @@
 import hoodiecrow from 'hoodiecrow-imap';
 
-export default hoodiecrow({
+export let Server = hoodiecrow({
   storage: {
     'INBOX': {
       messages: [{
@@ -34,3 +34,5 @@ export default hoodiecrow({
   },
   debug: false
 });
+
+export default Server;
