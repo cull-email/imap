@@ -13,32 +13,32 @@ npm install @cull/imap
 ```js
 import Client from '@cull/imap';
 
-// optional `options` passes through to `emailjs-imap-client`
-// see https://github.com/emailjs/emailjs-imap-client#api
 let c = new Client({
   host: 'mail.example.com',
-  port: 993,
   user: 'user@example.com',
   pass: 'password',
-  options: {
-    requireTLS: true
-  }
 });
 
-// List mailboxes
-let mailboxes = c.mailboxes();
+c.connect().then(() => {
+  // List mailboxes
+  // defaults to root level only
+  // pass true for recursive: `c.mailboxes(true);`
+  let mailboxes = c.mailboxes();
 
-// List message envelopes
-// (to, from, subject, date, etc.)
-// defaults to INBOX
-let envelopes = c.envelopes();
+   // List envelopes
+  // (to, from, subject, date, etc.)
+   // defaults to INBOX
+  let envelopes = c.envelopes();
 
-// List messages for a given sequence range
-// (1:3 = first, second and third messages)
-let messages = c.messages('INBOX', '1:3');
+  // List messages for a given sequence range
+  // (1:3 = first, second and third messages)
+  let messages = c.messages('INBOX', '1:3');
+});
+
+
 ```
 
-Alternatively, study the [tests](https://github.com/cull-email/imap/blob/master/test/index.spec.ts).
+Alternatively, study the tests.
 
 ## Development
 

@@ -12,14 +12,14 @@ export let testPreferences = {
   host: 'imap.ethereal.email',
   user: 'manuel22@ethereal.email',
   pass: 'RZPfRRKZNnrptYDGmX'
-}
+};
 
 test('Client id is generated when unspecified.', t => {
   let c = new Client({
     host: '',
     port: 0,
     user: '',
-    pass: '',
+    pass: ''
   });
   t.truthy(typeof c.name === 'string');
   t.truthy(c.name !== '');
@@ -32,7 +32,7 @@ test('Client id can be specified.', t => {
     host: '',
     port: 0,
     user: '',
-    pass: '',
+    pass: ''
   });
   t.is(c.name, 'foo');
 });
@@ -44,7 +44,7 @@ test('Client can establish an authenticated connection to an IMAP server.', asyn
   await c.disconnect();
 });
 
-test('Connection can store CAPABILITY data received from the server.', async (t) => {
+test('Connection can store CAPABILITY data received from the server.', async t => {
   let c = new Client(testPreferences);
   let connected = await c.connect();
   t.true(connected);
@@ -55,10 +55,7 @@ test('Connection can store CAPABILITY data received from the server.', async (t)
   let response = await c.connection.exchange(command);
   t.is(response.status, Status.OK);
   let capabilityResponse = c.connection.responses.find(r => {
-    return (
-      (r.data[ServerState.CAPABILITY] !== undefined) &&
-      (r.received > command.sent!)
-    );
+    return r.data[ServerState.CAPABILITY] !== undefined && r.received > command.sent!;
   });
   if (capabilityResponse) {
     t.deepEqual(c.capabilities, new Set(capabilityResponse.data[ServerState.CAPABILITY]));
@@ -75,48 +72,34 @@ test('Client can list mailboxes.', async t => {
     let m = await c.mailboxes(true);
     let expected: Mailbox[] = [
       {
-        attributes: [
-          '\\HasNoChildren',
-        ],
+        attributes: ['\\HasNoChildren'],
         delimiter: '/',
         name: 'INBOX',
-        path: 'INBOX',
+        path: 'INBOX'
       },
       {
-        attributes: [
-          '\\HasNoChildren',
-          '\\Drafts',
-        ],
+        attributes: ['\\HasNoChildren', '\\Drafts'],
         delimiter: '/',
         name: 'Drafts',
-        path: 'Drafts',
+        path: 'Drafts'
       },
       {
-        attributes: [
-          '\\HasNoChildren',
-          '\\Junk',
-        ],
+        attributes: ['\\HasNoChildren', '\\Junk'],
         delimiter: '/',
         name: 'Junk',
-        path: 'Junk',
+        path: 'Junk'
       },
       {
-        attributes: [
-          '\\HasNoChildren',
-          '\\Sent',
-        ],
+        attributes: ['\\HasNoChildren', '\\Sent'],
         delimiter: '/',
         name: 'Sent Mail',
-        path: 'Sent Mail',
+        path: 'Sent Mail'
       },
       {
-        attributes: [
-          '\\HasNoChildren',
-          '\\Trash',
-        ],
+        attributes: ['\\HasNoChildren', '\\Trash'],
         delimiter: '/',
         name: 'Trash',
-        path: 'Trash',
+        path: 'Trash'
       }
     ];
     t.deepEqual(m, expected);

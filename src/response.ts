@@ -6,11 +6,11 @@ import ResponseCode from './code';
  * @link https://tools.ietf.org/html/rfc3501#section-7.1
  */
 export enum Status {
-  OK      = 'OK',
-  NO      = 'NO',
-  BAD     = 'BAD',
+  OK = 'OK',
+  NO = 'NO',
+  BAD = 'BAD',
   PREAUTH = 'PREAUTH',
-  BYE     = 'BYE',
+  BYE = 'BYE'
 }
 
 /**
@@ -19,11 +19,11 @@ export enum Status {
  */
 export enum ServerState {
   CAPABILITY = 'CAPABILITY',
-  LIST       = 'LIST',
-  LSUB       = 'LSUB',
-  STATUS     = 'STATUS',
-  SEARCH     = 'SEARCH',
-  FLAGS      = 'FLAGS'
+  LIST = 'LIST',
+  LSUB = 'LSUB',
+  STATUS = 'STATUS',
+  SEARCH = 'SEARCH',
+  FLAGS = 'FLAGS'
 }
 
 /**
@@ -45,7 +45,7 @@ export interface MailboxSizeResponseData {
  */
 export enum MessageState {
   EXPUNGE = 'EXPUNGE',
-  FETCH   = 'FETCH',
+  FETCH = 'FETCH'
 }
 
 /**
@@ -98,7 +98,9 @@ export class Response {
 
   constructor(buffer: Buffer) {
     this.buffer = buffer;
-    let lines = this.toString('ascii').split('\r\n').filter(l => l !== '');
+    let lines = this.toString('ascii')
+      .split('\r\n')
+      .filter(l => l !== '');
     lines.forEach((line, _) => {
       let [token, data] = bisect(line);
       if (token === '+') {
@@ -117,13 +119,13 @@ export class Response {
       return;
     }
     switch (true) {
-      case !isNaN(parseInt(atom, 10)) && (remainder in MailboxSize):
+      case !isNaN(parseInt(atom, 10)) && remainder in MailboxSize:
         this.parseMailboxSizeResponse(atom, remainder);
         break;
-      case (atom in Status):
+      case atom in Status:
         this.parseStatusResponse(atom, remainder);
         break;
-      case (atom in ServerState):
+      case atom in ServerState:
         this.parseServerStateResponse(atom, remainder);
         break;
       default:
@@ -169,9 +171,9 @@ export class Response {
       let m = data.match(/^[\[](.+)[\]]\s{1}(.*)$/);
       if (m) {
         let [a, b] = bisect(m[1]);
-        let code = a ?
-          new ResponseCode(status, a, b, m[2]) :
-          new ResponseCode(status, m[1], undefined, m[2]);
+        let code = a
+          ? new ResponseCode(status, a, b, m[2])
+          : new ResponseCode(status, m[1], undefined, m[2]);
         this.codes.push(code);
       } else {
         this.text = data;
@@ -190,11 +192,11 @@ export class Response {
 
 export default Response;
 
-export let bisect = (input: string): [undefined|string,string] => {
+export let bisect = (input: string): [undefined | string, string] => {
   let matches = input.match(/^(\S*)\s(.*)$/);
   return !matches ? [undefined, input] : [matches[1], matches[2]];
-}
+};
 
-export let unquote = (input: string) : string => {
+export let unquote = (input: string): string => {
   return input.replace(/^"(.*)"$/, '$1');
-}
+};

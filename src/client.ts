@@ -40,12 +40,12 @@ export default class Client extends EventEmitter {
   }
 
   initialize(): void {
-    this.connection.on('error', (error) => {
+    this.connection.on('error', error => {
       this.emit('error', error);
     });
-    this.connection.on('receive', (response) => {
+    this.connection.on('receive', response => {
       this.analyzeResponse(response);
-    })
+    });
   }
 
   async connect(login: boolean = true): Promise<boolean> {
@@ -71,7 +71,7 @@ export default class Client extends EventEmitter {
     // Response Codes
     response.codes.forEach(c => {
       if (c.code === Code.CAPABILITY) {
-          c.data.forEach(capability => this.capabilities.add(capability));
+        c.data.forEach(capability => this.capabilities.add(capability));
       }
     });
     // Response Data
@@ -106,7 +106,6 @@ export default class Client extends EventEmitter {
         return reject(error);
       }
     });
-
   }
 
   // async envelopes(

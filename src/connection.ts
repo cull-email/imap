@@ -103,7 +103,7 @@ export enum State {
    * (Mailbox) Selected State
    * @link https://tools.ietf.org/html/rfc3501#section-3.3
    */
-  MailboxSelected,
+  MailboxSelected
 }
 
 /**
@@ -132,9 +132,9 @@ export class Connection extends EventEmitter {
     let defaults = {
       port: 993,
       timeout: 10,
-      sni: preferences.host,
+      sni: preferences.host
     };
-    this.configuration = { ...defaults, ...preferences};
+    this.configuration = { ...defaults, ...preferences };
   }
 
   /**
@@ -152,9 +152,11 @@ export class Connection extends EventEmitter {
             reject(this.socket.authorizationError);
           } else {
             this.connectionEstablished();
-            this.awaitResponse().then((response) => {
-              resolve(login ? this.login() : response);
-            }).catch(error => reject(error));
+            this.awaitResponse()
+              .then(response => {
+                resolve(login ? this.login() : response);
+              })
+              .catch(error => reject(error));
           }
         });
       } catch (error) {
@@ -173,11 +175,13 @@ export class Connection extends EventEmitter {
         try {
           let command = new Command('logout');
           this.send(command);
-          this.awaitResponse(command.tag).then((response) => {
-            this.socket.end(() => {
-              response.status === Status.OK ? resolve(response) : reject(response);
-            });
-          }).catch(error => reject(error));
+          this.awaitResponse(command.tag)
+            .then(response => {
+              this.socket.end(() => {
+                response.status === Status.OK ? resolve(response) : reject(response);
+              });
+            })
+            .catch(error => reject(error));
         } catch (error) {
           reject(error);
         }
@@ -197,15 +201,17 @@ export class Connection extends EventEmitter {
         let { user, pass } = this.configuration;
         let command = new Command('login', `${user} ${pass}`);
         this.send(command);
-        this.awaitResponse(command.tag).then((response) => {
-          if (response.status === Status.BAD) {
-            throw new Error(`Server error: ${response.text}`);
-          }
-          if (response.status === Status.OK) {
-            this.state = State.Authenticated;
-          }
-          resolve(response);
-        }).catch(error => reject(error));
+        this.awaitResponse(command.tag)
+          .then(response => {
+            if (response.status === Status.BAD) {
+              throw new Error(`Server error: ${response.text}`);
+            }
+            if (response.status === Status.OK) {
+              this.state = State.Authenticated;
+            }
+            resolve(response);
+          })
+          .catch(error => reject(error));
       } catch (error) {
         reject(error);
       }
@@ -288,7 +294,7 @@ export class Connection extends EventEmitter {
   connectionEstablished(): void {
     this.state = State.NotAuthenticated;
     this.emit('connect', 'TLS connection established.');
-    this.socket.on('data', (buffer) => {
+    this.socket.on('data', buffer => {
       try {
         let response = new Response(buffer);
         this.responses.push(response);
@@ -301,14 +307,14 @@ export class Connection extends EventEmitter {
       this.state = State.Disconnected;
       this.emit('end', 'Server closed connection.');
     });
-    this.socket.on('close', (error) => {
+    this.socket.on('close', error => {
       this.state = State.Disconnected;
       if (error) {
         this.emit('error', 'Connection closed with error.');
       }
       this.emit('close', 'Connection closed.');
     });
-    this.socket.on('error', (error) => {
+    this.socket.on('error', error => {
       this.emit('error', error);
       this.socket.end();
     });
@@ -319,7 +325,7 @@ export class Connection extends EventEmitter {
    */
   emit(event: string | symbol, ...args: any[]): boolean {
     if (event !== 'debug') {
-      super.emit('debug', { event, ...args});
+      super.emit('debug', { event, ...args });
     }
     return super.emit(event, ...args);
   }

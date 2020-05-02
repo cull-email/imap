@@ -9,7 +9,7 @@ test('Response can process a server ready response.', t => {
   t.is(response.status, Status.OK);
 });
 
-test('Response can process a tagged server response and result.', (t) => {
+test('Response can process a tagged server response and result.', t => {
   let response = new Response(
     Buffer.from(`* BYE IMAP4rev1 Server logging out\r\nA023 OK LOGOUT completed\r\n`)
   );
@@ -29,7 +29,9 @@ test('Response can process a tagged server response and result with optional res
 
 test('Response can process a tagged server response and result with optional response code CAPABILITY.', t => {
   let response = new Response(
-    Buffer.from(`* OK [CAPABILITY IMAP4rev1 SASL-IR AUTH=PLAIN AUTH=XOAUTH2 AUTH=OAUTHBEARER ID MOVE NAMESPACE XYMHIGHESTMODSEQ UIDPLUS LITERAL+ CHILDREN X-MSG-EXT OBJECTID] IMAP4rev1 Hello\r\n`)
+    Buffer.from(
+      `* OK [CAPABILITY IMAP4rev1 SASL-IR AUTH=PLAIN AUTH=XOAUTH2 AUTH=OAUTHBEARER ID MOVE NAMESPACE XYMHIGHESTMODSEQ UIDPLUS LITERAL+ CHILDREN X-MSG-EXT OBJECTID] IMAP4rev1 Hello\r\n`
+    )
   );
   t.is(response.tag, undefined);
   t.is(response.status, Status.OK);
@@ -40,17 +42,17 @@ test('Response can process a tagged server response and result with optional res
 
 test('Response can process an untagged CAPABILITY response.', t => {
   let response = new Response(
-    Buffer.from(`* CAPABILITY IMAP4rev1 APPENDLIMIT=26214400 CHILDREN CONDSTORE ENABLE ID IDLE MOVE NAMESPACE QUOTA SPECIAL-USE UIDPLUS UNSELECT UNSELECT UTF8=ACCEPT XLIST`)
+    Buffer.from(
+      `* CAPABILITY IMAP4rev1 APPENDLIMIT=26214400 CHILDREN CONDSTORE ENABLE ID IDLE MOVE NAMESPACE QUOTA SPECIAL-USE UIDPLUS UNSELECT UNSELECT UTF8=ACCEPT XLIST`
+    )
   );
   t.is(response.tag, undefined);
   t.is(response.status, undefined);
   t.is(response.data[ServerState.CAPABILITY].length, 16);
-})
+});
 
 test('Response can process an untagged LIST response.', t => {
-  let response = new Response(
-    Buffer.from(`* LIST (\\HasNoChildren) "/" "INBOX"\r\n`)
-  );
+  let response = new Response(Buffer.from(`* LIST (\\HasNoChildren) "/" "INBOX"\r\n`));
   t.is(response.tag, undefined);
   t.is(response.status, undefined);
   t.is(response.data[ServerState.LIST].length, 1);
@@ -58,16 +60,16 @@ test('Response can process an untagged LIST response.', t => {
     name: 'INBOX',
     path: 'INBOX',
     delimiter: '/',
-    attributes: [
-      '\\HasNoChildren'
-    ]
+    attributes: ['\\HasNoChildren']
   };
   t.deepEqual(response.data[ServerState.LIST][0], expected);
-})
+});
 
 test('Response can process a tagged LIST response preceded with multiple untagged lines.', t => {
   let response = new Response(
-    Buffer.from(`* LIST (\\HasNoChildren \\Drafts) "/" "Drafts"\r\n* LIST (\\HasNoChildren \\Junk) "/" "Junk"\r\n* LIST (\\HasNoChildren \\Sent) "/" "Sent Mail"\r\n* LIST (\\HasNoChildren \\Trash) "/" "Trash"\r\n4 OK LIST completed\r\n`)
+    Buffer.from(
+      `* LIST (\\HasNoChildren \\Drafts) "/" "Drafts"\r\n* LIST (\\HasNoChildren \\Junk) "/" "Junk"\r\n* LIST (\\HasNoChildren \\Sent) "/" "Sent Mail"\r\n* LIST (\\HasNoChildren \\Trash) "/" "Trash"\r\n4 OK LIST completed\r\n`
+    )
   );
   t.is(response.tag, '4');
   t.is(response.status, Status.OK);

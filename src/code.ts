@@ -5,17 +5,17 @@ import { Status } from './response';
  * @link https://tools.ietf.org/html/rfc3501#section-7.1
  */
 export enum Code {
-  ALERT          = 'ALERT',
-  BADCHARSET     = 'BADCHARSET',
-  CAPABILITY     = 'CAPABILITY',
-  PARSE          = 'PARSE',
+  ALERT = 'ALERT',
+  BADCHARSET = 'BADCHARSET',
+  CAPABILITY = 'CAPABILITY',
+  PARSE = 'PARSE',
   PERMANENTFLAGS = 'PERMANENTFLAGS',
-  READONLY       = 'READ-ONLY',
-  READWRITE      = 'READ-WRITE',
-  TRYCREATE      = 'TRYCREATE',
-  UIDNEXT        = 'UIDNEXT',
-  UIDVALIDITY    = 'UIDVALIDITY',
-  UNSEEN         = 'UNSEEN',
+  READONLY = 'READ-ONLY',
+  READWRITE = 'READ-WRITE',
+  TRYCREATE = 'TRYCREATE',
+  UIDNEXT = 'UIDNEXT',
+  UIDVALIDITY = 'UIDVALIDITY',
+  UNSEEN = 'UNSEEN'
 }
 
 /**
@@ -35,7 +35,7 @@ export class ResponseCode {
     this.status = status;
     this.code = code as Code;
     this.text = text;
-    switch(code) {
+    switch (code) {
       case Code.CAPABILITY:
         this.data = data?.split(` `);
         break;
