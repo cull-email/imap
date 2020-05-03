@@ -10,6 +10,7 @@ export interface Mailbox {
   path: string;
   delimiter: string;
   attributes: string[];
+  children?: Mailbox[];
 }
 
 export interface Preferences extends ConnectionPreferences {
@@ -89,16 +90,19 @@ export default class Client extends EventEmitter {
 
   /**
    * Get Mailboxes
-   * @param recursive
+   * @link https://tools.ietf.org/html/rfc3501#section-6.3.8
+   * @param children (`boolean`, default: `false`) Return children under this hierarchy
+   * @param path (`string`, default: empty) The name of a mailbox or level of hierarchy
    */
-  async mailboxes(recursive: boolean = false): Promise<Mailbox[]> {
+  async mailboxes(children: boolean = false, tree: boolean = true, path: string = ''): Promise<Mailbox[]> {
     return new Promise(async (resolve, reject) => {
       try {
-        let wildcard = recursive ? '*' : '%';
-        let command = new Command('list', `"" ${wildcard}`);
+        let wildcard = children ? '*' : '%';
+        let command = new Command('list', `"${path}" ${wildcard}`);
         let response = await this.connection.exchange(command);
         if (response.status === ResponseStatus.OK) {
-          return resolve([...this._mailboxes.values()]);
+          let mailboxes = tree ? mailboxTree(this._mailboxes) : [...this._mailboxes.values()];
+          return resolve(mailboxes);
         } else {
           return reject(response);
         }
@@ -154,4 +158,28 @@ export default class Client extends EventEmitter {
   //     });
   //   }
   // }
+}
+
+export let mailboxTree = (map: Map<string, Mailbox>): Mailbox[] => {
+  let mailboxes = [...map.values()];
+  mailboxes.forEach(mailbox => {
+    // reset for idempotency
+    delete mailbox.children;
+  });
+  let tree: Mailbox[] = [];
+  mailboxes.forEach(mailbox => {
+    let components = mailbox.path.split(mailbox.delimiter);
+    if (components.length > 1) {
+      components.pop();
+      let parent = map.get(components.join(mailbox.delimiter));
+      if (parent) {
+        parent.children ? parent.children.push(mailbox) : parent.children = [mailbox];
+      } else {
+        throw new Error(`Dangling mailbox: ${mailbox}`);
+      }
+    } else {
+      tree.push(mailbox);
+    }
+  });
+  return tree;
 }
