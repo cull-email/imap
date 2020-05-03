@@ -91,17 +91,18 @@ export default class Client extends EventEmitter {
   /**
    * Get Mailboxes
    * @link https://tools.ietf.org/html/rfc3501#section-6.3.8
-   * @param children (`boolean`, default: `false`) Return children under this hierarchy
+   * @param flatten (`boolean`, default: `false`) Return a flat array vs a nested array (tree)
+   * @param children (`boolean`, default: `true`) Return children under this hierarchy
    * @param path (`string`, default: empty) The name of a mailbox or level of hierarchy
    */
-  async mailboxes(children: boolean = false, tree: boolean = true, path: string = ''): Promise<Mailbox[]> {
+  async mailboxes(flatten: boolean = true, children: boolean = true, path: string = ''): Promise<Mailbox[]> {
     return new Promise(async (resolve, reject) => {
       try {
         let wildcard = children ? '*' : '%';
         let command = new Command('list', `"${path}" ${wildcard}`);
         let response = await this.connection.exchange(command);
         if (response.status === ResponseStatus.OK) {
-          let mailboxes = tree ? mailboxTree(this._mailboxes) : [...this._mailboxes.values()];
+          let mailboxes = flatten ? [...this._mailboxes.values()] : mailboxTree(this._mailboxes);
           return resolve(mailboxes);
         } else {
           return reject(response);
