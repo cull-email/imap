@@ -30,13 +30,9 @@ export enum ServerState {
  * Mailbox Size Response
  * @link https://tools.ietf.org/html/rfc3501#section-7.3
  */
-export enum MailboxSize {
+export enum MailboxSizeUpdate {
   EXISTS = 'EXISTS',
   RECENT = 'RECENT'
-}
-export interface MailboxSizeResponseData {
-  size: number;
-  response: MailboxSize;
 }
 
 /**
@@ -61,6 +57,7 @@ export class Response {
    * Original Buffer received from Socket
    */
   buffer: Buffer;
+
   /**
    * Date object tracking object instantiation -- synonymous to "received" datetime
    */
@@ -98,11 +95,11 @@ export class Response {
 
   constructor(buffer: Buffer) {
     this.buffer = buffer;
-    let lines = this.toString('ascii')
-      .split('\r\n')
-      .filter(l => l !== '');
-    lines.forEach((line, _) => {
+    this.lines.forEach((line, _) => {
       let [token, data] = bisect(line);
+      if (!token) {
+        return;
+      }
       if (token === '+') {
         this.continuation = true;
         this.text = data;
@@ -119,53 +116,25 @@ export class Response {
       return;
     }
     switch (true) {
-      case !isNaN(parseInt(atom, 10)) && remainder in MailboxSize:
-        this.parseMailboxSizeResponse(atom, remainder);
+      case !isNaN(parseInt(atom, 10)) && remainder in MailboxSizeUpdate:
+        this.parseMailboxSizeResponse(remainder as MailboxSizeUpdate, atom);
         break;
       case atom in Status:
-        this.parseStatusResponse(atom, remainder);
+        this.parseStatusResponse(atom as Status, remainder);
         break;
       case atom in ServerState:
-        this.parseServerStateResponse(atom, remainder);
+        this.parseServerStateResponse(atom as ServerState, remainder);
         break;
       default:
         throw new Error(`Unprocessed response: ${data}`);
     }
   }
 
-  parseServerStateResponse(key: string, data: string): void {
-    switch (key) {
-      /**
-       * CAPABILITY Response
-       * @link https://tools.ietf.org/html/rfc3501#section-7.2.1
-       */
-      case ServerState.CAPABILITY:
-        this.data[key] = data.split(` `);
-        break;
-      /**
-       * `LIST` Response
-       * @link https://tools.ietf.org/html/rfc3501#section-7.2.2
-       */
-      case ServerState.LIST:
-        let m = data.match(/^\((.+)\)\s(\S+)\s(.+)$/);
-        if (m) {
-          if (this.data[key] === undefined) {
-            this.data[key] = [];
-          }
-          let path = unquote(m[3]);
-          let delimiter = unquote(m[2]);
-          let name = path.split(delimiter).pop();
-          let attributes = m[1].split(` `);
-          this.data[ServerState.LIST].push({ name, path, delimiter, attributes });
-        }
-        break;
-      default:
-        throw new Error(`Unprocessed Server State Response: ${key} ${data}`);
-    }
-  }
-
-  parseStatusResponse(atom: string, data?: string): void {
-    let status = atom as Status;
+  /**
+   * Parse a general Status response
+   * @link https://tools.ietf.org/html/rfc3501#section-7.1
+   */
+  parseStatusResponse(status: Status, data?: string): void {
     this.status = status;
     if (data) {
       let m = data.match(/^[\[](.+)[\]]\s{1}(.*)$/);
@@ -181,12 +150,63 @@ export class Response {
     }
   }
 
-  parseMailboxSizeResponse(atom: string, data: string): void {
-    this.data[data as MailboxSize] = parseInt(atom, 10);
+  /**
+   * Parse a Server and Mailbox Status response
+   * @link https://tools.ietf.org/html/rfc3501#section-7.2
+   */
+  parseServerStateResponse(state: ServerState, data: string): void {
+    switch (state) {
+      /**
+       * `CAPABILITY` Response
+       * @link https://tools.ietf.org/html/rfc3501#section-7.2.1
+       */
+      case ServerState.CAPABILITY:
+        this.data[state] = data.split(` `);
+        break;
+      /**
+       * `LIST` Response
+       * @link https://tools.ietf.org/html/rfc3501#section-7.2.2
+       */
+      case ServerState.LIST:
+        let m = data.match(/^\((.+)\)\s(\S+)\s(.+)$/);
+        if (m) {
+          if (this.data[state] === undefined) {
+            this.data[state] = [];
+          }
+          let path = unquote(m[3]);
+          let delimiter = unquote(m[2]);
+          let name = path.split(delimiter).pop();
+          let attributes = m[1].split(` `);
+          this.data[ServerState.LIST].push({ name, path, delimiter, attributes });
+        }
+        break;
+      default:
+        throw new Error(`Unprocessed Server State Response: ${state} ${data}`);
+    }
   }
 
-  toString(encoding?: string): string {
-    return this.buffer.toString(encoding);
+  /**
+   * Parse a Mailbox Size response
+   * @link https://tools.ietf.org/html/rfc3501#section-7.3
+   */
+  parseMailboxSizeResponse(key: MailboxSizeUpdate, size: string): void {
+    this.data[key] = parseInt(size, 10);
+  }
+
+  protected _lines?: string[];
+  get lines(): string[] {
+    if (this._lines === undefined) {
+      this._lines = this.toString().split(`\r\n`).filter(line => line !== '');
+    }
+    return this._lines ?? [];
+  }
+
+  protected _string?: string;
+  toString(): string {
+    if (this._string === undefined) {
+      this._string = this.buffer.toString('ascii');
+    }
+    return this._string ?? '';
   }
 }
 
