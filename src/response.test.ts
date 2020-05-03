@@ -52,10 +52,10 @@ test('Response can process an untagged CAPABILITY response.', t => {
 });
 
 test('Response can process an untagged LIST response.', t => {
-  let response = new Response(Buffer.from(`* LIST (\\HasNoChildren) "/" "INBOX"\r\n`));
+  let response = new Response(Buffer.from(`* LIST (\\HasNoChildren) "/" "INBOX"\r\n* LIST () "/" "Foo"\r\n* LIST () "/" "Foo/Bar"`));
   t.is(response.tag, undefined);
   t.is(response.status, undefined);
-  t.is(response.data[ServerState.LIST].length, 1);
+  t.is(response.data[ServerState.LIST].length, 3);
   let expected = {
     name: 'INBOX',
     path: 'INBOX',
@@ -63,6 +63,13 @@ test('Response can process an untagged LIST response.', t => {
     attributes: ['\\HasNoChildren']
   };
   t.deepEqual(response.data[ServerState.LIST][0], expected);
+  expected = {
+    name: 'Bar',
+    path: 'Foo/Bar',
+    delimiter: '/',
+    attributes: []
+  }
+  t.deepEqual(response.data[ServerState.LIST][2], expected);
 });
 
 test('Response can process a tagged LIST response preceded with multiple untagged lines.', t => {
