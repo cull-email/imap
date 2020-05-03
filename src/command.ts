@@ -36,7 +36,11 @@ export class Command {
   }
 
   toString(): string {
-    return [this.tag, this.command.toUpperCase(), this.args].join(' ') + '\r\n';
+    let components = [this.tag, this.command, this.args];
+    if (!this.args) {
+      components.pop();
+    }
+    return components.join(' ') + '\r\n';
   }
 }
 
