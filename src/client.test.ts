@@ -111,9 +111,14 @@ test('Client can list mailboxes.', async t => {
 });
 
 // test('Client can list all envelopes for a mailbox', async t => {
-//   let c = client();
-//   let e = await c.envelopes();
-//   t.is(e.length, 6);
+//   let c = new Client(testPreferences);
+//   try {
+//     await c.connect();
+//     // let e = await c.envelopes();
+//     // t.is(e.length, 6);
+//   } catch(error) {
+//     t.fail(error);
+//   }
 // });
 
 // test('Client can list some envelopes for a mailbox', async t => {
