@@ -208,29 +208,6 @@ export default class Client extends EventEmitter {
     });
   }
 
-  // async envelopes(
-  //   mailbox: string = 'INBOX',
-  //   sequence: string = '1:10',
-  //   query: string[] = []
-  // ): Promise<Envelope[]> {
-  //   try {
-  //     await this.client.connect();
-  //     let messages = await this.client.listMessages(
-  //       mailbox,
-  //       sequence,
-  //       ['uid', 'flags', 'envelope'].concat(query)
-  //     );
-  //     this.client.close();
-  //     return messages.map((m: Message) => {
-  //       return { ...m.envelope, client: this, mailbox };
-  //     });
-  //   } catch (error) {
-  //     return this.client.close().then(() => {
-  //       return Promise.reject(error);
-  //     });
-  //   }
-  // }
-
   // async messages(
   //   mailbox: string = 'INBOX',
   //   sequence: string = '1:10',
