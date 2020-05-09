@@ -24,20 +24,26 @@ export enum Code {
  */
 export class ResponseCode {
   status: Status;
-  code: Code;
+  code: string;
   data?: any;
   text?: string;
 
   constructor(status: Status, code: string, data?: string, text?: string) {
-    if (!(code in Code)) {
-      throw new Error(`${code} is not a valid response code.`);
-    }
+    // if (!(code in Code)) {
+    //   throw new Error(`${code} is not a valid response code.`);
+    // }
     this.status = status;
-    this.code = code as Code;
+    this.code = code;
     this.text = text;
     switch (code) {
       case Code.CAPABILITY:
         this.data = data?.split(` `);
+        break;
+      case Code.PERMANENTFLAGS:
+        let m = data?.match(/^\((.*)\)$/);
+        if (m) {
+          this.data = m[1].split(` `);
+        }
         break;
       default:
         this.data = data;

@@ -1,7 +1,8 @@
 import test from 'ava';
-import Client, { Mailbox } from './client';
+import Client from './client';
+import Mailbox from './mailbox';
 import { State } from './connection';
-import { Status, ServerState } from './response';
+import { Status, ServerStatus } from './response';
 import Command from './command';
 
 /**
@@ -21,9 +22,9 @@ test('Client id is generated when unspecified.', t => {
     user: '',
     pass: ''
   });
-  t.truthy(typeof c.name === 'string');
-  t.truthy(c.name !== '');
-  t.truthy(c.name !== null);
+  t.truthy(typeof c.id === 'string');
+  t.truthy(c.id !== '');
+  t.truthy(c.id !== null);
 });
 
 test('Client id can be specified.', t => {
@@ -34,7 +35,7 @@ test('Client id can be specified.', t => {
     user: '',
     pass: ''
   });
-  t.is(c.name, 'foo');
+  t.is(c.id, 'foo');
 });
 
 test('Client can establish an authenticated connection to an IMAP server.', async t => {
@@ -55,10 +56,10 @@ test('Connection can store CAPABILITY data received from the server.', async t =
   let response = await c.connection.exchange(command);
   t.is(response.status, Status.OK);
   let capabilityResponse = c.connection.responses.find(r => {
-    return r.data[ServerState.CAPABILITY] !== undefined && r.received > command.sent!;
+    return r.data[ServerStatus.CAPABILITY] !== undefined && r.received > command.sent!;
   });
   if (capabilityResponse) {
-    t.deepEqual(c.capabilities, new Set(capabilityResponse.data[ServerState.CAPABILITY]));
+    t.deepEqual(c.capabilities, new Set(capabilityResponse.data[ServerStatus.CAPABILITY]));
   } else {
     t.fail(`Expected a CAPABILITY response.`);
   }
@@ -74,35 +75,30 @@ test('Client can list mailboxes.', async t => {
       {
         attributes: ['\\HasNoChildren'],
         delimiter: '/',
-        name: 'INBOX',
-        path: 'INBOX'
+        name: 'INBOX'
       },
       {
         attributes: ['\\HasNoChildren', '\\Drafts'],
         delimiter: '/',
         name: 'Drafts',
-        path: 'Drafts'
       },
       {
         attributes: ['\\HasNoChildren', '\\Junk'],
         delimiter: '/',
         name: 'Junk',
-        path: 'Junk'
       },
       {
         attributes: ['\\HasNoChildren', '\\Sent'],
         delimiter: '/',
         name: 'Sent Mail',
-        path: 'Sent Mail'
       },
       {
         attributes: ['\\HasNoChildren', '\\Trash'],
         delimiter: '/',
         name: 'Trash',
-        path: 'Trash'
       }
     ];
-    t.deepEqual(m, expected);
+    t.deepEqual([...m.values()], expected);
   } catch (error) {
     t.log(error);
   }
@@ -110,16 +106,17 @@ test('Client can list mailboxes.', async t => {
   await c.disconnect();
 });
 
-// test('Client can list all envelopes for a mailbox', async t => {
-//   let c = new Client(testPreferences);
-//   try {
-//     await c.connect();
-//     // let e = await c.envelopes();
-//     // t.is(e.length, 6);
-//   } catch(error) {
-//     t.fail(error);
-//   }
-// });
+test('Client can list all envelopes for a mailbox.', async t => {
+  let c = new Client(testPreferences);
+  try {
+    await c.connect();
+    // c.on('debug', t.log);
+    let e = await c.envelopes('INBOX');
+    t.is([...e.values()].length, 0);
+  } catch(error) {
+    t.fail(error);
+  }
+});
 
 // test('Client can list some envelopes for a mailbox', async t => {
 //   let c = client();

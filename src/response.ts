@@ -1,4 +1,6 @@
 import ResponseCode from './code';
+import Envelope from './envelope';
+import { bisect, unquote } from './patterns';
 
 /**
  * Status Response
@@ -17,7 +19,7 @@ export enum Status {
  * Server and Mailbox Status Response
  * @link https://tools.ietf.org/html/rfc3501#section-7.2
  */
-export enum ServerState {
+export enum ServerStatus {
   CAPABILITY = 'CAPABILITY',
   LIST = 'LIST',
   LSUB = 'LSUB',
@@ -25,6 +27,7 @@ export enum ServerState {
   SEARCH = 'SEARCH',
   FLAGS = 'FLAGS'
 }
+export type ServerStatusResponseData = { [key in ServerStatus]?: any };
 
 /**
  * Mailbox Size Response
@@ -34,15 +37,47 @@ export enum MailboxSizeUpdate {
   EXISTS = 'EXISTS',
   RECENT = 'RECENT'
 }
+export type MailboxSizeUpdateResponseData = { [key in MailboxSizeUpdate]?: number };
 
 /**
  * Message Status Response
  * @link https://tools.ietf.org/html/rfc3501#section-7.4
  */
-export enum MessageState {
+export enum MessageStatus {
   EXPUNGE = 'EXPUNGE',
   FETCH = 'FETCH'
 }
+export interface MessageStatusResponseData {
+  EXPUNGE?: number[];
+  FETCH?: FetchResponseData;
+};
+/**
+ * Message data map keyed by Sequence #
+ */
+export type FetchResponseData = Map<number, MessageData>;
+
+/**
+ * Message Data Items included a FETCH
+ * @link https://tools.ietf.org/html/rfc3501#section-7.4.2
+ */
+export enum MessageDataItem {
+  BODY = 'BODY',
+  BODYSTRUCTURE = 'BODYSTRUCTURE',
+  ENVELOPE = 'ENVELOPE',
+  FLAGS = 'FLAGS',
+  INTERNALDATE = 'INTERNALDATE',
+  RFC822 = 'RFC822',
+  HEADER = 'RFC822.HEADER',
+  SIZE = 'RFC822.SIZE',
+  TEXT = 'RFC822.TEXT',
+  UID = 'UID'
+}
+
+export type MessageData = {
+  [key in MessageDataItem]?: any;
+}
+
+export type Data = ServerStatusResponseData & MailboxSizeUpdateResponseData & MessageStatusResponseData;
 
 /**
  * __An IMAP Server Response__
@@ -66,7 +101,7 @@ export class Response {
    * Server provided data
    * @link https://tools.ietf.org/html/rfc3501#section-2.2.2
    */
-  data = {};
+  data: Data = {};
   /**
    * Server provided human-readable text
    * @link https://tools.ietf.org/html/rfc3501#section-7
@@ -106,24 +141,29 @@ export class Response {
         return;
       }
       this.tag = token !== '*' ? token : undefined;
-      this.parseResponse(data);
+      this.parseLine(data);
     });
   }
 
-  parseResponse(data: string): void {
-    let [atom, remainder] = bisect(data);
-    if (!atom) {
-      return;
-    }
+  protected parseLine(data: string): void {
+    let [a, b] = bisect(data);
+    if (!a) return;
+    let i = parseInt(a, 10);
+    let numeric = !isNaN(i);
+    let [c, d] = bisect(b);
+    let e = c ?? b;
     switch (true) {
-      case !isNaN(parseInt(atom, 10)) && remainder in MailboxSizeUpdate:
-        this.parseMailboxSizeResponse(remainder as MailboxSizeUpdate, atom);
+      case numeric && e in MailboxSizeUpdate:
+        this.parseMailboxSizeResponse(e as MailboxSizeUpdate, i);
         break;
-      case atom in Status:
-        this.parseStatusResponse(atom as Status, remainder);
+      case numeric && e in MessageStatus:
+        this.parseMessageStatusResponse(e as MessageStatus, i, d);
         break;
-      case atom in ServerState:
-        this.parseServerStateResponse(atom as ServerState, remainder);
+      case a in Status:
+        this.parseStatusResponse(a as Status, b);
+        break;
+      case a in ServerStatus:
+        this.parseServerStatusResponse(a as ServerStatus, b);
         break;
       default:
         throw new Error(`Unprocessed response: ${data}`);
@@ -134,7 +174,7 @@ export class Response {
    * Parse a general Status response
    * @link https://tools.ietf.org/html/rfc3501#section-7.1
    */
-  parseStatusResponse(status: Status, data?: string): void {
+  protected parseStatusResponse(status: Status, data?: string): void {
     this.status = status;
     if (data) {
       let m = data.match(/^[\[](.+)[\]]\s{1}(.*)$/);
@@ -154,31 +194,37 @@ export class Response {
    * Parse a Server and Mailbox Status response
    * @link https://tools.ietf.org/html/rfc3501#section-7.2
    */
-  parseServerStateResponse(state: ServerState, data: string): void {
+  protected parseServerStatusResponse(state: ServerStatus, data: string): void {
     switch (state) {
       /**
        * `CAPABILITY` Response
        * @link https://tools.ietf.org/html/rfc3501#section-7.2.1
        */
-      case ServerState.CAPABILITY:
+      case ServerStatus.CAPABILITY:
         this.data[state] = data.split(` `);
         break;
       /**
        * `LIST` Response
        * @link https://tools.ietf.org/html/rfc3501#section-7.2.2
        */
-      case ServerState.LIST:
+      case ServerStatus.LIST:
         let m = data.match(/^\((.*)\)\s(\S+)\s(.+)$/);
         if (m) {
           if (this.data[state] === undefined) {
             this.data[state] = [];
           }
-          let path = unquote(m[3]);
+          let name = unquote(m[3]);
           let delimiter = unquote(m[2]);
-          let name = path.split(delimiter).pop();
           let attributes = m[1].split(` `).filter(a => a !== '');
-          this.data[ServerState.LIST].push({ name, path, delimiter, attributes });
+          this.data[ServerStatus.LIST].push({ name, delimiter, attributes });
         }
+        break;
+      case ServerStatus.FLAGS:
+        if (this.data[state] === undefined) {
+          this.data[state] = [];
+        }
+        let m2 = data.match(/^\((.*)\)$/);
+        this.data[ServerStatus.FLAGS] = m2 ? m2[1].split(` `) : [data];
         break;
       default:
         throw new Error(`Unprocessed Server State Response: ${state} ${data}`);
@@ -189,9 +235,72 @@ export class Response {
    * Parse a Mailbox Size response
    * @link https://tools.ietf.org/html/rfc3501#section-7.3
    */
-  parseMailboxSizeResponse(key: MailboxSizeUpdate, size: string): void {
-    this.data[key] = parseInt(size, 10);
+  protected parseMailboxSizeResponse(key: MailboxSizeUpdate, size: number): void {
+    this.data[key] = size;
   }
+
+  /**
+   * Parse a Message Status response.
+   * @link https://tools.ietf.org/html/rfc3501#section-7.4
+   */
+  protected parseMessageStatusResponse(key: MessageStatus, sequence: number, data?: string): void {
+    switch(key) {
+      case MessageStatus.EXPUNGE:
+        if (this.data[key] === undefined) {
+          this.data[key] = [];
+        }
+        this.data[key]?.push(sequence);
+        break;
+      case MessageStatus.FETCH:
+        this.parseFetchResponse(sequence, data);
+        break;
+      default:
+        throw new Error(`Unprocessed Message Status Response: ${key} ${sequence} ${data}`);
+    }
+  }
+
+  /**
+   * Parse a FETCH response.
+   * @link https://tools.ietf.org/html/rfc3501#section-7.4.2
+   */
+  protected parseFetchResponse(sequence: number, data?: string): void {
+    if (!data) return;
+    if (this.data[MessageStatus.FETCH] === undefined) {
+      this.data[MessageStatus.FETCH] = new Map() as Map<number, {}>;
+    }
+    // extract [item, ...] from `(item (...))`
+    let m1 = data.match(/^\((\S+)\s\((.*)\)\)$/);
+    if (m1) {
+      let message = this.data[MessageStatus.FETCH]?.get(sequence) ?? {};
+      let item = m1[1].toUpperCase();
+      let section;
+      let octet;
+      if (item.length > 4 && item.indexOf('BODY') === 0) {
+        let m2 = item.match(/^BODY\[(.+)\](\<(.*)\>)?$/);
+        if (m2) {
+          item = 'BODY';
+          section = m2[1];
+          octet = m2[3];
+        }
+      }
+      if (!(item in MessageDataItem)) {
+        throw new Error(`Unsupported Message Data Item: ${item}.`);
+      }
+      switch (item) {
+        case MessageDataItem.ENVELOPE:
+          message[item] = Envelope.from(m1[2]);
+          break;
+        case MessageDataItem.BODY:
+          message[item] = { section, octet, data };
+          break;
+        default:
+          message[item] = { data };
+          break;
+      }
+      this.data[MessageStatus.FETCH]?.set(sequence, message);
+    }
+  }
+
 
   protected _lines?: string[];
   get lines(): string[] {
@@ -211,12 +320,3 @@ export class Response {
 }
 
 export default Response;
-
-export let bisect = (input: string): [undefined | string, string] => {
-  let matches = input.match(/^(\S*)\s(.*)$/);
-  return !matches ? [undefined, input] : [matches[1], matches[2]];
-};
-
-export let unquote = (input: string): string => {
-  return input.replace(/^"(.*)"$/, '$1');
-};

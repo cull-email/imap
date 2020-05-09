@@ -1,6 +1,7 @@
 import test from 'ava';
-import Response, { Status, ServerState } from './response';
+import Response, { Status, ServerStatus, MessageStatus, MessageData, MessageDataItem } from './response';
 import { Code } from './code';
+import Envelope from './envelope';
 
 test('Response can process a server ready response.', t => {
   let response = new Response(
@@ -48,28 +49,26 @@ test('Response can process an untagged CAPABILITY response.', t => {
   );
   t.is(response.tag, undefined);
   t.is(response.status, undefined);
-  t.is(response.data[ServerState.CAPABILITY].length, 16);
+  t.is(response.data[ServerStatus.CAPABILITY].length, 16);
 });
 
 test('Response can process an untagged LIST response.', t => {
   let response = new Response(Buffer.from(`* LIST (\\HasNoChildren) "/" "INBOX"\r\n* LIST () "/" "Foo"\r\n* LIST () "/" "Foo/Bar"`));
   t.is(response.tag, undefined);
   t.is(response.status, undefined);
-  t.is(response.data[ServerState.LIST].length, 3);
+  t.is(response.data[ServerStatus.LIST].length, 3);
   let expected = {
     name: 'INBOX',
-    path: 'INBOX',
     delimiter: '/',
     attributes: ['\\HasNoChildren']
   };
-  t.deepEqual(response.data[ServerState.LIST][0], expected);
+  t.deepEqual(response.data[ServerStatus.LIST][0], expected);
   expected = {
-    name: 'Bar',
-    path: 'Foo/Bar',
+    name: 'Foo/Bar',
     delimiter: '/',
     attributes: []
   }
-  t.deepEqual(response.data[ServerState.LIST][2], expected);
+  t.deepEqual(response.data[ServerStatus.LIST][2], expected);
 });
 
 test('Response can process a tagged LIST response preceded with multiple untagged lines.', t => {
@@ -80,5 +79,60 @@ test('Response can process a tagged LIST response preceded with multiple untagge
   );
   t.is(response.tag, '4');
   t.is(response.status, Status.OK);
-  t.is(response.data[ServerState.LIST].length, 4);
+  t.is(response.data[ServerStatus.LIST].length, 4);
+});
+
+test('Response can process an untagged FLAGS response.', t => {
+  let response = new Response(
+    Buffer.from(
+      `* FLAGS (\\Seen \\Drafts \\*)\r\n`
+    )
+  );
+  t.is(response.tag, undefined);
+  t.deepEqual(response.data[ServerStatus.FLAGS], ['\\Seen', '\\Drafts', '\\*']);
+});
+
+test('Response can process an untagged OK response with PERMANENTFLAGS.', t => {
+  let response = new Response(
+    Buffer.from(
+      `* OK [PERMANENTFLAGS (\\Seen \\Drafts \\*)] Flags permitted\r\n`
+    )
+  );
+  t.is(response.status, Status.OK);
+  t.is(response.codes[0].code, Code.PERMANENTFLAGS);
+  t.deepEqual(response.codes[0].data, ['\\Seen', '\\Drafts', '\\*']);
+});
+
+test('Response can process an untagged OK response with UIDVALIDITY', t => {
+  let response = new Response(
+    Buffer.from(
+      `* OK [UIDVALIDITY 1588148011] UIDs valid]\r\n`
+    )
+  );
+  t.is(response.status, Status.OK);
+  t.is(response.codes[0].code, Code.UIDVALIDITY);
+  t.is(response.codes[0].data, '1588148011');
+});
+
+test('Response can process an EXPUNGE response with multiple sequences.', t => {
+  let response = new Response(
+    Buffer.from(
+      `* 1 EXPUNGE\r\n* 5 EXPUNGE\r\n* 3 EXPUNGE\r\n`
+    )
+  );
+  t.deepEqual(response.data[MessageStatus.EXPUNGE], [1, 5, 3]);
+});
+
+test('Response can process a FETCH response with an envelope.', t => {
+  let response = new Response(
+    Buffer.from(
+      `* 1 FETCH (envelope ("Mon, 5 May 2020 00:00:01 -1000" "test" (("Jon Adams" NIL "jon" "cull.email")) (("Jon Adams" NIL "jon" "cull.email")) (("Jon Adams" NIL "jon" "cull.email")) ((NIL NIL "jaclyn" "cull.email")) NIL NIL NIL "<8ECD42F9-2045-4EF3-8287-BD7E0F2A3C90@cull.email>"))\r\n`
+    )
+  );
+  t.truthy(response.data[MessageStatus.FETCH]);
+  let message = response.data[MessageStatus.FETCH]?.get(1) as MessageData;
+  let envelope = message[MessageDataItem.ENVELOPE];
+  t.truthy(envelope);
+  t.true(envelope instanceof Envelope);
+  t.is(envelope.date, 'Mon, 5 May 2020 00:00:01 -1000');
 });
