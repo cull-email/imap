@@ -185,7 +185,7 @@ export default class Client extends EventEmitter {
     });
   }
 
-  async envelopes(name: string): Promise<Map<number, Envelope>> {
+  async envelopes(name: string, sequence: string = '1:10'): Promise<Map<number, Envelope>> {
     this._envelopes = new Map();
     return new Promise(async (resolve, reject) => {
       try {
@@ -193,7 +193,7 @@ export default class Client extends EventEmitter {
         this.selected = new SelectedMailbox(name);
         let response = await this.connection.exchange(select);
         if (response.status === ResponseStatus.OK) {
-          let command = new Command('fetch', '1:* envelope');
+          let command = new Command('fetch', `${sequence} envelope`);
           response = await this.connection.exchange(command);
           if (response.status === ResponseStatus.OK) {
             return resolve(this._envelopes);

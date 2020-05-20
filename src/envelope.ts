@@ -1,7 +1,8 @@
 import Patterns, {
   named as namedPattern,
   compile as compilePattern,
-  unquote
+  unquote,
+  deliteralize,
 } from './patterns';
 import Address, { parseList as parseAddresses } from './address';
 
@@ -36,7 +37,7 @@ export class Envelope {
       namedPattern('messageId', Patterns.nilOrString, true)
     ];
     let pattern = compilePattern(patterns);
-    let match = response.match(pattern);
+    let match = deliteralize(response).match(pattern);
     if (!match || !match.groups) {
       throw new Error(`Could not parse envelope from response: ${response}`);
     }

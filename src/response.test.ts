@@ -3,6 +3,18 @@ import Response, { Status, ServerStatus, MessageStatus, MessageData, MessageData
 import { Code } from './code';
 import Envelope from './envelope';
 
+test('Response can process a server response including multiple lines and string literals', t => {
+  let response = new Response(
+    Buffer.from('* OK Line 1\r\n* OK Line {4}\r\n2 \r\n\r\n* OK Line 3\r\n')
+  );
+  t.is(response.lines.length, 3);
+  t.deepEqual(response.lines, [
+    '* OK Line 1',
+    `* OK Line {4}\r\n2 \r\n`,
+    '* OK Line 3'
+  ]);
+});
+
 test('Response can process a server ready response.', t => {
   let response = new Response(
     Buffer.from('* OK Server ready for requests 0.0.0.0 54bv5g2dokk43x5g\r\n')
@@ -126,7 +138,7 @@ test('Response can process an EXPUNGE response with multiple sequences.', t => {
 test('Response can process a FETCH response with an envelope.', t => {
   let response = new Response(
     Buffer.from(
-      `* 1 FETCH (envelope ("Mon, 5 May 2020 00:00:01 -1000" "test" (("Jon Adams" NIL "jon" "cull.email")) (("Jon Adams" NIL "jon" "cull.email")) (("Jon Adams" NIL "jon" "cull.email")) ((NIL NIL "jaclyn" "cull.email")) NIL NIL NIL "<8ECD42F9-2045-4EF3-8287-BD7E0F2A3C90@cull.email>"))\r\n`
+      `* 1 FETCH (envelope ("Mon, 5 May 2020 00:00:01 -1000" {14}\r\n"test" literal (("Jon" NIL "jon" "cull.email")) (("Jon" NIL "jon" "cull.email")) (("Jon" NIL "jon" "cull.email")) ((NIL NIL "jaclyn" "cull.email")) NIL NIL NIL "<8ECD42F9-2045-4EF3-8287-BD7E0F2A3C90@cull.email>"))\r\n`
     )
   );
   t.truthy(response.data[MessageStatus.FETCH]);
@@ -136,3 +148,4 @@ test('Response can process a FETCH response with an envelope.', t => {
   t.true(envelope instanceof Envelope);
   t.is(envelope.date, 'Mon, 5 May 2020 00:00:01 -1000');
 });
+

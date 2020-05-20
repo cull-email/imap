@@ -120,6 +120,7 @@ export class Connection extends EventEmitter {
   state: State = State.Disconnected;
   /** The TLS Socket utilized for this connnection. */
   socket: TLSSocket = new TLSSocket(new Socket());
+  protected _buffer: Buffer = Buffer.from('');
   /** The configuration utilized for this connection. */
   configuration: Configuration;
   /** A collection of all commands sent to the server on this connection. */
@@ -294,18 +295,36 @@ export class Connection extends EventEmitter {
   connectionEstablished(): void {
     this.state = State.NotAuthenticated;
     this.emit('connect', 'TLS connection established.');
-    this.socket.on('data', buffer => {
-      try {
-        let response = new Response(buffer);
-        this.responses.push(response);
-        this.emit('receive', response);
-      } catch (error) {
-        this.emit('error', error);
+    let read = () => {
+      let incoming = this.socket.read();
+      let b = Buffer.concat([this._buffer, incoming]);
+      console.dir(b.toString('ascii'));
+      let offset = 0;
+      for (; offset < b.length; offset++) {
+        if ((b[offset] === 0x0A) && b[offset - 1] === 0x0D) {
+          let slice = b.slice(0, offset + 1);
+          // https://tools.ietf.org/html/rfc3501#section-4.3
+          let match = slice.toString('ascii').match(/^(.+)\{(\d+)\}\r\n$/);
+          if (match) {
+            return;
+          }
+          try {
+            let response = new Response(slice);
+            this.responses.push(response);
+            this.emit('receive', response);
+            b = b.slice(offset + 1);
+            offset = 0;
+          } catch (error) {
+            this.emit('error', error);
+          }
+        }
       }
-    });
+
+      this._buffer = b;
+    }
+    this.socket.on('readable', read);
     this.socket.on('end', () => {
-      this.state = State.Disconnected;
-      this.emit('end', 'Server closed connection.');
+      console.log('end');
     });
     this.socket.on('close', error => {
       this.state = State.Disconnected;

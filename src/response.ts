@@ -1,6 +1,6 @@
 import ResponseCode from './code';
 import Envelope from './envelope';
-import { bisect, unquote } from './patterns';
+import Patterns, { bisect, unquote } from './patterns';
 
 /**
  * Status Response
@@ -141,7 +141,11 @@ export class Response {
         return;
       }
       this.tag = token !== '*' ? token : undefined;
-      this.parseLine(data);
+      try {
+        this.parseLine(data);
+      } catch (error) {
+        throw error;
+      }
     });
   }
 
@@ -268,20 +272,14 @@ export class Response {
     if (this.data[MessageStatus.FETCH] === undefined) {
       this.data[MessageStatus.FETCH] = new Map() as Map<number, {}>;
     }
-    // extract [item, ...] from `(item (...))`
+    // extract [item, ...] from string `(item (...))`
     let m1 = data.match(/^\((\S+)\s\((.*)\)\)$/);
     if (m1) {
       let message = this.data[MessageStatus.FETCH]?.get(sequence) ?? {};
       let item = m1[1].toUpperCase();
-      let section;
-      let octet;
-      if (item.length > 4 && item.indexOf('BODY') === 0) {
-        let m2 = item.match(/^BODY\[(.+)\](\<(.*)\>)?$/);
-        if (m2) {
-          item = 'BODY';
-          section = m2[1];
-          octet = m2[3];
-        }
+      // BODY or BODY[...]
+      if (item.length > 4 && item.indexOf(MessageDataItem.BODY) === 0) {
+        item = MessageDataItem.BODY;
       }
       if (!(item in MessageDataItem)) {
         throw new Error(`Unsupported Message Data Item: ${item}.`);
@@ -291,7 +289,14 @@ export class Response {
           message[item] = Envelope.from(m1[2]);
           break;
         case MessageDataItem.BODY:
-          message[item] = { section, octet, data };
+          let m2 = item.match(/^BODY\[(.+)\](\<(.*)\>)?$/);
+          if (m2) {
+            let section = m2[1];
+            let octet = m2[3];
+            message[item] = { section, octet, data };
+          } else {
+            message[item] = { data };
+          }
           break;
         default:
           message[item] = { data };
@@ -303,9 +308,19 @@ export class Response {
 
 
   protected _lines?: string[];
+  /**
+   * Split response data into lines by CRLF
+   * Except when preceded by {n} (n = number; string literal preceding symbol)
+   * @link https://tools.ietf.org/html/rfc3501#section-4.3
+   */
   get lines(): string[] {
     if (this._lines === undefined) {
-      this._lines = this.toString().split(`\r\n`).filter(line => line !== '');
+      let data = this.toString();
+      let containsLiterals = data.match(Patterns.stringLiteralPrefix);
+      let lines = containsLiterals === null
+        ? data.split(`\r\n`)
+        : linesFromResponseWithStringLiterals(data);
+      this._lines = lines.filter(line => line !== '');
     }
     return this._lines ?? [];
   }
@@ -320,3 +335,35 @@ export class Response {
 }
 
 export default Response;
+
+export let linesFromResponseWithStringLiterals = (data: string): string[] => {
+  let lines: string[] = [];
+  let buffer = '';
+  let literal = false;
+  let octet = {
+    target: 0,
+    index: 0
+  };
+  let pattern = new RegExp(`${Patterns.stringLiteralPrefix.source}$`);
+  [...data].forEach(current => {
+    let previous = buffer[buffer.length - 1];
+    buffer += current;
+    if (literal) octet.index++;
+    if (current === `\n` && previous === `\r` && !literal) {
+      let match = buffer.match(pattern);
+      if (match && match.groups !== undefined && match.groups.octets !== undefined) {
+        literal = true;
+        let target = parseInt(match.groups.octets, 10);
+        if (target) {
+          octet = { target, index: 0 };
+        }
+      } else {
+        lines.push(buffer.slice(0, -2));
+        buffer = '';
+      }
+    }
+    literal = literal && octet.index !== octet.target;
+  });
+  if (buffer !== '') lines.push(buffer);
+  return lines;
+}
