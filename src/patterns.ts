@@ -1,9 +1,8 @@
 export let Patterns = {
-  string: new RegExp(/(?<!\\)\"?(.*)(?<!\\)\"?/),
+  string: new RegExp(/(?<!\\)"(.*?)(?<!\\)"/),
   stringLiteralPrefix: new RegExp(/\{(?<octets>\d+)\}\r\n/),
   stringLiteralSplit: new RegExp(/^(?<head>[^\{|.]*)\{(?<octets>\d+)\}\r\n(?<tail>.+)$/s),
-  nilOrString: new RegExp(/NIL|(?<!\\)\"?([^\"]*)(?<!\\)\"?/),
-  optionalString: new RegExp(/(?<!\\)\"?([^\"]*)(?<!\\)\"?/),
+  nilOrString: new RegExp(/NIL|(?<!\\)"(.*?)(?<!\\)"/),
   parenthesized: new RegExp(/\((.+)\)/),
   nilOrParenthesized: new RegExp(/NIL|\((.+)\)/),
   parenthesizedList: new RegExp(/\(([^\(\)]+)\)/),
@@ -20,7 +19,7 @@ export let named = (name: string, pattern: RegExp, optional: boolean = false): N
   return [name, pattern, optional];
 };
 
-export let compile = (patterns: NamedPattern[], singleline: boolean = false): RegExp => {
+export let compile = (patterns: NamedPattern[], singleline: boolean = true): RegExp => {
   let source: string[] = [];
   patterns.forEach(([name, pattern, optional]) => {
     let re = `(?<${name}>${pattern.source})`;
@@ -33,11 +32,23 @@ export let compile = (patterns: NamedPattern[], singleline: boolean = false): Re
 }
 
 /**
- * Strip quotes from a string
+ * Remove  quotes from a string
  */
 export let unquote = (input?: string): string => {
   return input ? input.replace(/^"(.*)"$/s, '$1') : '';
 };
+
+export let quote = (input?: string): string => {
+  return input ? `"${input}"` : '""';
+}
+
+export let unescape = (input?: string): string => {
+  return input ? input.replace('\\"', '"') : '';
+}
+
+export let escape = (input?: string): string => {
+  return input ? input.replace('"', '\\"') : '';
+}
 
 /**
  * Strip parentheses from a string
@@ -66,7 +77,7 @@ export let deliteralize = (input: string): string => {
       let { head, octets, tail } = matches.groups;
       buffer += head;
       let length = parseInt(octets, 10);
-      let literal = tail.substring(0, length).replace('"', '\\"');
+      let literal = escape(tail.substring(0, length));
       buffer += `"${literal}"`;
       data = tail.substring(length);
     } else {

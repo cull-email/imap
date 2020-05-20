@@ -107,22 +107,17 @@ test('Client can list mailboxes.', async t => {
 });
 
 test('Client can list all envelopes for a mailbox.', async t => {
-  let c = new Client({
-    host: 'imap.fastmail.com',
-    user: 'adbox@kuokoa.studio',
-    pass: 'nkb5gnqsgp7udh4c',
-  });
+  let c = new Client(testPreferences);
   c.on('error', (...args) => {
     t.fail(...args);
   });
   try {
     await c.connect();
-    // c.on('debug', t.log);
-    let e = await c.envelopes('INBOX', '1:20');
+    let e = await c.envelopes('INBOX', '1:10');
     t.is([...e.values()].length, 0);
   } catch(error) {
-    t.log(c.connection.log);
-    t.fail(error);
+    t.log(error);
+    t.fail('An unexpected error has occurred.');
   }
 });
 

@@ -72,7 +72,6 @@ export enum MessageDataItem {
   TEXT = 'RFC822.TEXT',
   UID = 'UID'
 }
-
 export type MessageData = {
   [key in MessageDataItem]?: any;
 }
@@ -89,12 +88,12 @@ export type Data = ServerStatusResponseData & MailboxSizeUpdateResponseData & Me
  */
 export class Response {
   /**
-   * Original Buffer received from Socket
+   * Originating response buffer
    */
   buffer: Buffer;
 
   /**
-   * Date object tracking object instantiation -- synonymous to "received" datetime
+   * Datetime Response object created; analgous to a "received" datetime
    */
   received: Date = new Date();
   /**
@@ -273,7 +272,7 @@ export class Response {
       this.data[MessageStatus.FETCH] = new Map() as Map<number, {}>;
     }
     // extract [item, ...] from string `(item (...))`
-    let m1 = data.match(/^\((\S+)\s\((.*)\)\)$/);
+    let m1 = data.match(/^\((\S+)\s\((.*)\)\)$/s);
     if (m1) {
       let message = this.data[MessageStatus.FETCH]?.get(sequence) ?? {};
       let item = m1[1].toUpperCase();
@@ -289,7 +288,7 @@ export class Response {
           message[item] = Envelope.from(m1[2]);
           break;
         case MessageDataItem.BODY:
-          let m2 = item.match(/^BODY\[(.+)\](\<(.*)\>)?$/);
+          let m2 = item.match(/^BODY\[(.+)\](\<(.*)\>)?$/s);
           if (m2) {
             let section = m2[1];
             let octet = m2[3];

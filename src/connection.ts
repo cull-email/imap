@@ -281,6 +281,7 @@ export class Connection extends EventEmitter {
     let timeout = (seconds ?? this.configuration.timeout) * 1000;
     return setTimeout(() => {
       let error = `Response time exceeded ${timeout}ms.`;
+      console.dir(this.log);
       if (reject === undefined) {
         throw new Error(error);
       } else {
@@ -295,18 +296,17 @@ export class Connection extends EventEmitter {
   connectionEstablished(): void {
     this.state = State.NotAuthenticated;
     this.emit('connect', 'TLS connection established.');
-    let read = () => {
-      let incoming = this.socket.read();
-      let b = Buffer.concat([this._buffer, incoming]);
-      console.dir(b.toString('ascii'));
+    this.socket.on('data', buffer => {
+      let b = Buffer.concat([this._buffer, buffer]);
       let offset = 0;
       for (; offset < b.length; offset++) {
+        // CRLF
         if ((b[offset] === 0x0A) && b[offset - 1] === 0x0D) {
           let slice = b.slice(0, offset + 1);
           // https://tools.ietf.org/html/rfc3501#section-4.3
           let match = slice.toString('ascii').match(/^(.+)\{(\d+)\}\r\n$/);
           if (match) {
-            return;
+            continue;
           }
           try {
             let response = new Response(slice);
@@ -319,12 +319,11 @@ export class Connection extends EventEmitter {
           }
         }
       }
-
       this._buffer = b;
-    }
-    this.socket.on('readable', read);
+    });
     this.socket.on('end', () => {
-      console.log('end');
+      this.state = State.Disconnected;
+      this.emit('end', 'Server closed connection.')
     });
     this.socket.on('close', error => {
       this.state = State.Disconnected;
