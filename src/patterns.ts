@@ -66,7 +66,7 @@ export let bisect = (input: string): [undefined | string, string] => {
 };
 
 /**
- * Isolate string literals, "escape" double quotes, wrap with double quotes
+ * Isolate string literals, escape double quotes, wrap with double quotes
  */
 export let deliteralize = (input: string): string => {
   let data = input;

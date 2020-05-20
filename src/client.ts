@@ -41,11 +41,11 @@ export default class Client extends EventEmitter {
   /**
    * A cache of mailboxes the server has communicated.
    */
-  _mailboxes: Mailboxes = new Map();
+  protected _mailboxes: Mailboxes = new Map();
   /**
    * A cache of envelopes the server has communicated.
    */
-  _envelopes: Envelopes = new Map();
+  protected _envelopes: Envelopes = new Map();
 
   constructor(preferences: Preferences) {
     super();
@@ -54,7 +54,7 @@ export default class Client extends EventEmitter {
     this.initialize();
   }
 
-  initialize(): void {
+  protected initialize(): void {
     this.connection.on('error', error => {
       this.emit('error', error);
     });
@@ -82,7 +82,7 @@ export default class Client extends EventEmitter {
   /**
    * Analyze a response and update connection data as applicable.
    */
-  analyzeResponse(response: Response): void {
+  protected analyzeResponse(response: Response): void {
     // Response Codes
     response.codes.forEach(c => {
       switch (c.code) {
@@ -146,7 +146,7 @@ export default class Client extends EventEmitter {
     });
   }
 
-  analyzeFetchResponseData(data: FetchResponseData): void {
+  protected analyzeFetchResponseData(data: FetchResponseData): void {
     data.forEach((message, sequence) => {
       Object.keys(message).forEach(item => {
         switch(item) {
@@ -185,20 +185,75 @@ export default class Client extends EventEmitter {
     });
   }
 
+  /**
+   * Get Mailbox
+   * @link https://tools.ietf.org/html/rfc3501#section-6.3.8
+   * @param name (`string`) The name of a mailbox or level of hierarchy
+   * @param path (`string`, default: `/`)
+   * @param stale (`boolean`, default: `true`) allow possibly stale (cached) result
+   */
+  async mailbox(name: string, path: string = '/', stale: boolean = true): Promise<Mailbox> {
+    let mailbox: Mailbox | undefined;
+    return new Promise(async (resolve, reject) => {
+      if (stale) {
+        mailbox = this._mailboxes.get(path);
+        if (mailbox !== undefined) return resolve(mailbox);
+      }
+      try {
+        let command = new Command('list', `"${path}" "${name}"`);
+        let response = await this.connection.exchange(command);
+        if (response.status === ResponseStatus.OK) {
+          mailbox = this._mailboxes.get(name);
+          return mailbox !== undefined
+            ? resolve(mailbox)
+            : reject(new Error('Mailbox could not be found.'));
+        }
+        throw response;
+      } catch (error) {
+        return reject(error);
+      }
+    })
+  }
+
+  /**
+   * Fetch Envelopes for a given mailbox and sequence
+   * @link https://tools.ietf.org/html/rfc3501#section-6.4.5
+   * @param name (`string`) The mailbox name/path
+   * @param sequence
+   */
   async envelopes(name: string, sequence: string = '1:10'): Promise<Map<number, Envelope>> {
     this._envelopes = new Map();
     return new Promise(async (resolve, reject) => {
       try {
+        await this.select(name);
+        let command = new Command('fetch', `${sequence} envelope`);
+        let response = await this.connection.exchange(command);
+        if (response.status === ResponseStatus.OK) {
+          return resolve(this._envelopes);
+        }
+        throw response;
+      } catch(error) {
+        return reject(error);
+      }
+    });
+  }
+
+  /**
+   * Select a Mailbox for subsequent command context.
+   * @link https://tools.ietf.org/html/rfc3501#section-6.3.1
+   * @param name (`string`)
+   */
+  async select(name: string): Promise<SelectedMailbox> {
+    return new Promise(async (resolve, reject) => {
+      if (this.selected !== undefined && this.selected.name === name) {
+        return resolve(this.selected);
+      }
+      try {
         let select = new Command('select', name);
-        this.selected = new SelectedMailbox(name);
         let response = await this.connection.exchange(select);
         if (response.status === ResponseStatus.OK) {
-          let command = new Command('fetch', `${sequence} envelope`);
-          response = await this.connection.exchange(command);
-          if (response.status === ResponseStatus.OK) {
-            return resolve(this._envelopes);
-          }
-          throw response;
+          this.selected = new SelectedMailbox(name);
+          return resolve(this.selected);
         }
         throw response;
       } catch(error) {

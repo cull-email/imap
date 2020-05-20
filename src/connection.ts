@@ -281,7 +281,6 @@ export class Connection extends EventEmitter {
     let timeout = (seconds ?? this.configuration.timeout) * 1000;
     return setTimeout(() => {
       let error = `Response time exceeded ${timeout}ms.`;
-      console.dir(this.log);
       if (reject === undefined) {
         throw new Error(error);
       } else {

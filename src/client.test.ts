@@ -106,6 +106,28 @@ test('Client can list mailboxes.', async t => {
   await c.disconnect();
 });
 
+test('Client can get a mailbox.', async t => {
+  let c = new Client(testPreferences);
+  try {
+    await c.connect();
+    let m = await c.mailbox('INBOX');
+    let expected: Mailbox = {
+      attributes: ['\\HasNoChildren'],
+      delimiter: '/',
+      name: 'INBOX'
+    };
+    t.deepEqual(m, expected);
+  } catch (error) {
+    t.log(c.connection.log);
+    t.log(error);
+  }
+
+  await c.disconnect();
+});
+
+/**
+ * @todo interface with a server/mock for legitimate, predictable scenario
+ */
 test('Client can list all envelopes for a mailbox.', async t => {
   let c = new Client(testPreferences);
   c.on('error', (...args) => {

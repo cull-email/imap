@@ -27,18 +27,18 @@ test('Patterns can be combined named patterns for keyed extraction', t => {
   }
 });
 
-test('Patterns can deliteralize string literals interspersed in a string', t => {
+test('deliteralize string literals interspersed in a string', t => {
   let result = deliteralize(`{7}\r\n1234 "  "5678" {3}\r\nfoo \r\n`);
   t.is(result, '"1234 \\" " "5678" "foo" \r\n');
 });
 
 
-test('Patterns can unquote a string to remove boundary double quotes', t => {
+test('unquote a string to remove boundary double quotes', t => {
   let result = unquote(`"testing quotes"`);
   t.is(result, 'testing quotes');
 });
 
-test('Patterns can unescape a string to remove escaped double quotes', t => {
-  let result = unescape(`"test a \\"quote"`);
+test('unescape a string to remove escaped double quotes', t => {
+  let result = unescape('"test a \\"quote"');
   t.is(result, '"test a "quote"');
 });
