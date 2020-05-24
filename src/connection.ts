@@ -132,7 +132,7 @@ export class Connection extends EventEmitter {
     super();
     let defaults = {
       port: 993,
-      timeout: 10,
+      timeout: 60,
       sni: preferences.host
     };
     this.configuration = { ...defaults, ...preferences };
@@ -292,19 +292,26 @@ export class Connection extends EventEmitter {
   /**
    * Update connection state and configure default emitter relays from connection socket
    */
-  connectionEstablished(): void {
+  protected connectionEstablished(): void {
     this.state = State.NotAuthenticated;
     this.emit('connect', 'TLS connection established.');
     this.socket.on('data', buffer => {
       let b = Buffer.concat([this._buffer, buffer]);
       let offset = 0;
+      let literal = false;
+      let target = 0;
       for (; offset < b.length; offset++) {
+        if (literal && offset > target) {
+          literal = false;
+        }
         // CRLF
-        if ((b[offset] === 0x0A) && b[offset - 1] === 0x0D) {
+        if ((b[offset] === 0x0A) && b[offset - 1] === 0x0D && !literal) {
           let slice = b.slice(0, offset + 1);
           // https://tools.ietf.org/html/rfc3501#section-4.3
-          let match = slice.toString('ascii').match(/^(.+)\{(\d+)\}\r\n$/);
-          if (match) {
+          let match = slice.toString('ascii').match(/^(.+)\{(?<target>(\d+))\}\r\n$/);
+          if (match && match.groups && match.groups.target) {
+            literal = true;
+            target = offset + parseInt(match.groups.target, 10);
             continue;
           }
           try {

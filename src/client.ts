@@ -13,20 +13,45 @@ import { Code } from './code';
 import { Command } from './command';
 import Mailbox, { SelectedMailbox } from './mailbox';
 import Envelope from './envelope';
+import Message from './message';
 
+/**
+ * A collection of server capabilities.
+ * @link https://tools.ietf.org/html/rfc3501#section-7.2.1
+ */
 type Capabilities = Set<string>;
-type Mailboxes = Map<string, Mailbox>;
-type Envelopes = Map<number, Envelope>;
 
+/**
+ * A collection of mailboxes keyed by name.
+ */
+type Mailboxes = Map<string, Mailbox>;
+/**
+ * A collection of envelopes keyed by sequence number.
+ */
+type Envelopes = Map<number, Envelope>;
+/**
+ * A collection of messages keyed by sequence number.
+ */
+type Messages = Map<number, Message>;
+
+/**
+ * User-specified client options analogous to configuration.
+ */
 export interface Preferences extends ConnectionPreferences {
   /**
-   * Client Identifier
+   * A unique identifier for the client instance.
    */
   id?: string;
 }
 
 export default class Client extends EventEmitter {
+  /**
+   * A unique identifier.
+   */
   id: string;
+  /**
+   * An IMAP connection reference.
+   */
   connection: Connection;
   /**
    * Capabilities the server has communicated.
@@ -46,6 +71,10 @@ export default class Client extends EventEmitter {
    * A cache of envelopes the server has communicated.
    */
   protected _envelopes: Envelopes = new Map();
+  /**
+   * A cache of messages the server has communicated.
+   */
+  protected _messages: Messages = new Map();
 
   constructor(preferences: Preferences) {
     super();
@@ -102,6 +131,16 @@ export default class Client extends EventEmitter {
         case Code.READWRITE:
           if (this.selected) {
             this.selected.writeable = true;
+          }
+          break;
+        case Code.UIDNEXT:
+          if (this.selected) {
+            this.selected.uid.next = c.data;
+          }
+          break;
+        case Code.UIDVALIDITY:
+          if (this.selected) {
+            this.selected.uid.validity = c.data;
           }
           break;
         default:
@@ -216,29 +255,6 @@ export default class Client extends EventEmitter {
   }
 
   /**
-   * Fetch Envelopes for a given mailbox and sequence
-   * @link https://tools.ietf.org/html/rfc3501#section-6.4.5
-   * @param name (`string`) The mailbox name/path
-   * @param sequence
-   */
-  async envelopes(name: string, sequence: string = '1:10'): Promise<Map<number, Envelope>> {
-    this._envelopes = new Map();
-    return new Promise(async (resolve, reject) => {
-      try {
-        await this.select(name);
-        let command = new Command('fetch', `${sequence} envelope`);
-        let response = await this.connection.exchange(command);
-        if (response.status === ResponseStatus.OK) {
-          return resolve(this._envelopes);
-        }
-        throw response;
-      } catch(error) {
-        return reject(error);
-      }
-    });
-  }
-
-  /**
    * Select a Mailbox for subsequent command context.
    * @link https://tools.ietf.org/html/rfc3501#section-6.3.1
    * @param name (`string`)
@@ -249,15 +265,56 @@ export default class Client extends EventEmitter {
         return resolve(this.selected);
       }
       try {
+        this.selected = new SelectedMailbox(name);
         let select = new Command('select', name);
         let response = await this.connection.exchange(select);
         if (response.status === ResponseStatus.OK) {
-          this.selected = new SelectedMailbox(name);
+
           return resolve(this.selected);
         }
         throw response;
       } catch(error) {
         this.selected = undefined;
+        return reject(error);
+      }
+    });
+  }
+
+  /**
+   * Fetch Envelopes for a given mailbox and sequence
+   * @link https://tools.ietf.org/html/rfc3501#section-6.4.5
+   * @param name (`string`) The mailbox name/path
+   * @param sequence (`string) sequence set
+   * @param timeout (`number`) timeout in seconds
+   */
+  async envelopes(name: string = 'INBOX', sequence: string = '1:10', timeout?: number): Promise<Map<number, Envelope>> {
+    this._envelopes = new Map();
+    return new Promise(async (resolve, reject) => {
+      try {
+        await this.select(name);
+        let command = new Command('fetch', `${sequence} envelope`);
+        let response = await this.connection.exchange(command, timeout);
+        if (response.status === ResponseStatus.OK) {
+          return resolve(this._envelopes);
+        }
+        throw response;
+      } catch(error) {
+        return reject(error);
+      }
+    });
+  }
+
+  async messages(name: string = 'INBOX', sequence: string = '1:10', timeout?: number): Promise<Messages> {
+    this._messages = new Map();
+    return new Promise(async (resolve, reject) => {
+      try {
+        await this.select(name);
+        let command = new Command('fetch', `${sequence} (FLAGS INTERNALDATE BODY.PEEK[HEADER] ENVELOPE)`);
+        let response = await this.connection.exchange(command, timeout);
+        if (response.status === ResponseStatus.OK) {
+          return resolve(this._messages);
+        }
+      } catch (error) {
         return reject(error);
       }
     });

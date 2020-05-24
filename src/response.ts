@@ -1,6 +1,6 @@
 import ResponseCode from './code';
 import Envelope from './envelope';
-import Patterns, { bisect, unquote } from './patterns';
+import Patterns, { bisect, unquote, deliteralize } from './patterns';
 
 /**
  * Status Response
@@ -149,47 +149,30 @@ export class Response {
   }
 
   protected parseLine(data: string): void {
-    let [a, b] = bisect(data);
-    if (!a) return;
-    let i = parseInt(a, 10);
+    let [head, tail] = bisect(data);
+    if (!head) return;
+    let i = parseInt(head, 10);
     let numeric = !isNaN(i);
-    let [c, d] = bisect(b);
-    let e = c ?? b;
+    let [headOfTail, tailOfTail] = bisect(tail);
+    let numericKey = headOfTail ?? tail;
     switch (true) {
-      case numeric && e in MailboxSizeUpdate:
-        this.parseMailboxSizeResponse(e as MailboxSizeUpdate, i);
+      case numeric && numericKey in MailboxSizeUpdate:
+        this.parseMailboxSizeResponse(numericKey as MailboxSizeUpdate, i);
         break;
-      case numeric && e in MessageStatus:
-        this.parseMessageStatusResponse(e as MessageStatus, i, d);
+      case numeric && numericKey in MessageStatus:
+        this.parseMessageStatusResponse(numericKey as MessageStatus, i, tailOfTail);
         break;
-      case a in Status:
-        this.parseStatusResponse(a as Status, b);
+      case head in Status:
+        this.status = head as Status;
+        let parsed = parseStatusResponse(this.status, tail);
+        this.codes = this.codes.concat(parsed.codes);
+        this.text = parsed.text;
         break;
-      case a in ServerStatus:
-        this.parseServerStatusResponse(a as ServerStatus, b);
+      case head in ServerStatus:
+        this.parseServerStatusResponse(head as ServerStatus, tail);
         break;
       default:
         throw new Error(`Unprocessed response: ${data}`);
-    }
-  }
-
-  /**
-   * Parse a general Status response
-   * @link https://tools.ietf.org/html/rfc3501#section-7.1
-   */
-  protected parseStatusResponse(status: Status, data?: string): void {
-    this.status = status;
-    if (data) {
-      let m = data.match(/^[\[](.+)[\]]\s{1}(.*)$/);
-      if (m) {
-        let [a, b] = bisect(m[1]);
-        let code = a
-          ? new ResponseCode(status, a, b, m[2])
-          : new ResponseCode(status, m[1], undefined, m[2]);
-        this.codes.push(code);
-      } else {
-        this.text = data;
-      }
     }
   }
 
@@ -271,8 +254,9 @@ export class Response {
     if (this.data[MessageStatus.FETCH] === undefined) {
       this.data[MessageStatus.FETCH] = new Map() as Map<number, {}>;
     }
+    let deliteral = deliteralize(data);
     // extract [item, ...] from string `(item (...))`
-    let m1 = data.match(/^\((\S+)\s\((.*)\)\)$/s);
+    let m1 = deliteral.match(/^\((\S+)\s\((.*)\)\)$/s);
     if (m1) {
       let message = this.data[MessageStatus.FETCH]?.get(sequence) ?? {};
       let item = m1[1].toUpperCase();
@@ -305,20 +289,10 @@ export class Response {
     }
   }
 
-
   protected _lines?: string[];
-  /**
-   * Split response data into lines by CRLF
-   * Except when preceded by {n} (n = number; string literal preceding symbol)
-   * @link https://tools.ietf.org/html/rfc3501#section-4.3
-   */
   get lines(): string[] {
     if (this._lines === undefined) {
-      let data = this.toString();
-      let containsLiterals = data.match(Patterns.stringLiteralPrefix);
-      let lines = containsLiterals === null
-        ? data.split(`\r\n`)
-        : linesFromResponseWithStringLiterals(data);
+      let lines = linesFromResponse(this.toString());
       this._lines = lines.filter(line => line !== '');
     }
     return this._lines ?? [];
@@ -335,6 +309,24 @@ export class Response {
 
 export default Response;
 
+/**
+ * Split response data into lines.
+ * @link https://tools.ietf.org/html/rfc3501#section-2.2
+ */
+export let linesFromResponse = (data: string): string[] => {
+  let containsLiterals = data.match(Patterns.stringLiteralPrefix);
+  return containsLiterals === null
+    ? data.split(`\r\n`)
+    : linesFromResponseWithStringLiterals(data);
+}
+
+/**
+ * Break single string multi-line response into array of strings by `\r\n`.
+ *
+ * Ignore `\r\n` when part of a string literal symbol, `{0}\r\n` or the string literal data.
+ * @link https://tools.ietf.org/html/rfc3501#section-2.2
+ * @link https://tools.ietf.org/html/rfc3501#section-4.3
+ */
 export let linesFromResponseWithStringLiterals = (data: string): string[] => {
   let lines: string[] = [];
   let buffer = '';
@@ -365,4 +357,28 @@ export let linesFromResponseWithStringLiterals = (data: string): string[] => {
   });
   if (buffer !== '') lines.push(buffer);
   return lines;
+}
+
+export interface ParsedStatusResponse { codes: ResponseCode[], text?: string };
+/**
+ * Parse a general Status response
+ * @link https://tools.ietf.org/html/rfc3501#section-7.1
+ */
+export let parseStatusResponse = (status: Status, data?: string): ParsedStatusResponse => {
+  let result: ParsedStatusResponse = {
+    codes: [],
+  };
+  if (data) {
+    let m = data.match(/^[\[](.+)[\]]\s{1}(.*)$/);
+    if (m) {
+      let [a, b] = bisect(m[1]);
+      let code = a
+        ? new ResponseCode(status, a, b, m[2])
+        : new ResponseCode(status, m[1], undefined, m[2]);
+      result.codes.push(code);
+    } else {
+      result.text = data;
+    }
+  }
+  return result;
 }

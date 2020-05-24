@@ -1,5 +1,5 @@
-import test from 'ava';
-import Client from './client';
+import test, { ExecutionContext } from 'ava';
+import Client, { Preferences } from './client';
 import Mailbox from './mailbox';
 import { State } from './connection';
 import { Status, ServerStatus } from './response';
@@ -14,6 +14,14 @@ export let testPreferences = {
   user: 'manuel22@ethereal.email',
   pass: 'RZPfRRKZNnrptYDGmX'
 };
+
+export let testClient = (t: ExecutionContext, preferences: Preferences = testPreferences) => {
+  let client = new Client(preferences);
+  client.on('error', (...args) => {
+    t.fail(...args);
+  });
+  return client;
+}
 
 test('Client id is generated when unspecified.', t => {
   let c = new Client({
@@ -39,35 +47,38 @@ test('Client id can be specified.', t => {
 });
 
 test('Client can establish an authenticated connection to an IMAP server.', async t => {
-  let c = new Client(testPreferences);
+  let c = testClient(t);
   let connected = await c.connect();
   t.true(connected);
   await c.disconnect();
 });
 
 test('Connection can store CAPABILITY data received from the server.', async t => {
-  let c = new Client(testPreferences);
-  let connected = await c.connect();
-  t.true(connected);
-  t.is(c.connection.state, State.Authenticated);
-  t.true([...c.capabilities].length > 0);
-  c.capabilities = new Set();
-  let command = new Command('capability');
-  let response = await c.connection.exchange(command);
-  t.is(response.status, Status.OK);
-  let capabilityResponse = c.connection.responses.find(r => {
-    return r.data[ServerStatus.CAPABILITY] !== undefined && r.received > command.sent!;
-  });
-  if (capabilityResponse) {
-    t.deepEqual(c.capabilities, new Set(capabilityResponse.data[ServerStatus.CAPABILITY]));
-  } else {
-    t.fail(`Expected a CAPABILITY response.`);
+  let c = testClient(t);
+  try {
+    await c.connect();
+  } catch (error) {
+    t.is(c.connection.state, State.Authenticated);
+    t.true([...c.capabilities].length > 0);
+    c.capabilities = new Set();
+    let command = new Command('capability');
+    let response = await c.connection.exchange(command);
+    t.is(response.status, Status.OK);
+    let capabilityResponse = c.connection.responses.find(r => {
+      return r.data[ServerStatus.CAPABILITY] !== undefined && r.received > command.sent!;
+    });
+    if (capabilityResponse) {
+      t.deepEqual(c.capabilities, new Set(capabilityResponse.data[ServerStatus.CAPABILITY]));
+    } else {
+      t.fail(`Expected a CAPABILITY response.`);
+    }
+  } finally {
+    await c.disconnect();
   }
-  await c.disconnect();
 });
 
 test('Client can list mailboxes.', async t => {
-  let c = new Client(testPreferences);
+  let c = testClient(t);
   try {
     await c.connect();
     let m = await c.mailboxes(true);
@@ -100,14 +111,14 @@ test('Client can list mailboxes.', async t => {
     ];
     t.deepEqual([...m.values()], expected);
   } catch (error) {
-    t.log(error);
+    t.fail(error);
+  } finally {
+    await c.disconnect();
   }
-
-  await c.disconnect();
 });
 
 test('Client can get a mailbox.', async t => {
-  let c = new Client(testPreferences);
+  let c = testClient(t);
   try {
     await c.connect();
     let m = await c.mailbox('INBOX');
@@ -118,67 +129,55 @@ test('Client can get a mailbox.', async t => {
     };
     t.deepEqual(m, expected);
   } catch (error) {
-    t.log(c.connection.log);
-    t.log(error);
+    t.fail(error);
+  } finally {
+    await c.disconnect();
   }
+});
 
-  await c.disconnect();
+test('Client can select a mailbox.', async t => {
+  let c = testClient(t);
+  try {
+    await c.connect();
+    let m = await c.select('INBOX');
+    t.deepEqual(m, c.selected);
+  } catch (error) {
+    t.fail(error);
+  } finally {
+    await c.disconnect();
+  }
 });
 
 /**
  * @todo interface with a server/mock for legitimate, predictable scenario
  */
 test('Client can list all envelopes for a mailbox.', async t => {
-  let c = new Client(testPreferences);
-  c.on('error', (...args) => {
-    t.fail(...args);
-  });
+  let c = testClient(t);
   try {
     await c.connect();
-    let e = await c.envelopes('INBOX', '1:10');
+    let e = await c.envelopes();
     t.is([...e.values()].length, 0);
   } catch(error) {
     t.log(error);
     t.fail('An unexpected error has occurred.');
+  } finally {
+    await c.disconnect();
   }
 });
 
-// test('Client can list some envelopes for a mailbox', async t => {
-//   let c = client();
-//   let e = await c.envelopes('INBOX', '1:2');
-//   t.is(e.length, 2);
-// });
-
-// test('Client will not list envelopes for an invalid mailbox', async t => {
-//   let c = client();
-//   let e = null;
-//   try {
-//     await c.envelopes('INVALID_MAILBOX');
-//   } catch (error) {
-//     e = error;
-//   }
-//   t.truthy(e);
-// });
-
-// test('Client can list all messages for a mailbox', async t => {
-//   let c = client();
-//   let m = await c.messages();
-//   t.is(m.length, 6);
-// });
-
-// test('Client can list some messages for a mailbox', async t => {
-//   let c = client();
-//   let m = await c.messages('INBOX', '1:2');
-//   t.is(m.length, 2);
-// });
-
-// test('Client will not list messages for an invalid mailbox', async t => {
-//   let c = client();
-//   let e = null;
-//   try {
-//     await c.messages('INVALID_MAILBOX');
-//   } catch (error) {
-//     e = error;
-//   }
-//   t.truthy(e);
-// });
+test('Client can list all messages for a mailbox.', async t => {
+  let c = testClient(t);
+  c.on('debug', (...args) => {
+    console.dir(args);
+  });
+  try {
+    await c.connect();
+    let e = await c.messages();
+    t.is([...e.values()].length, 0);
+  } catch(error) {
+    t.log(error);
+    t.fail('An unexpected error has occurred.');
+  } finally {
+    await c.disconnect();
+  }
+});
