@@ -127,8 +127,16 @@ export class Response {
    */
   codes: ResponseCode[] = [];
 
+  /**
+   * Given a response buffer, parse each line based on the first token.
+   * @link https://tools.ietf.org/html/rfc3501#section-2.2.2
+   */
   constructor(buffer: Buffer) {
     this.buffer = buffer;
+    this.initialize();
+  }
+
+  protected initialize(): void {
     this.lines.forEach((line, _) => {
       let [token, data] = bisect(line);
       if (!token) {
