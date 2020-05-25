@@ -20,7 +20,7 @@ test('Envelope can parse a string response into an Envelope', t => {
   expected.to = [
     { host: 'cull.email', mailbox: 'jaclyn' }
   ];
-  expected.messageId = '<8ECD42F9-2045-4EF3-8287-BD7E0F2A3C90@cull.email>';
+  expected.id = '<8ECD42F9-2045-4EF3-8287-BD7E0F2A3C90@cull.email>';
   t.deepEqual(result, expected);
 });
 

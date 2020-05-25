@@ -1,7 +1,7 @@
 import Envelope from './envelope';
 
 export interface Message {
-  id: string;
+  uid?: string;
   envelope?: Envelope;
 }
 

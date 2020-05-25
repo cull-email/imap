@@ -1,6 +1,11 @@
 import ResponseCode from './code';
+import Patterns, {
+  bisect,
+  unquote,
+  deliteralize,
+  deparenthesize
+} from './patterns';
 import Envelope from './envelope';
-import Patterns, { bisect, unquote, deliteralize } from './patterns';
 
 /**
  * Status Response
@@ -20,7 +25,15 @@ export enum Status {
  * @link https://tools.ietf.org/html/rfc3501#section-7.2
  */
 export enum ServerStatus {
+  /**
+   * `CAPABILITY` Response
+   * @link https://tools.ietf.org/html/rfc3501#section-7.2.1
+   */
   CAPABILITY = 'CAPABILITY',
+  /**
+   * `LIST` Response
+   * @link https://tools.ietf.org/html/rfc3501#section-7.2.2
+   */
   LIST = 'LIST',
   LSUB = 'LSUB',
   STATUS = 'STATUS',
@@ -127,17 +140,17 @@ export class Response {
    */
   codes: ResponseCode[] = [];
 
-  /**
-   * Given a response buffer, parse each line based on the first token.
-   * @link https://tools.ietf.org/html/rfc3501#section-2.2.2
-   */
   constructor(buffer: Buffer) {
     this.buffer = buffer;
     this.initialize();
   }
 
+  /**
+   * Parse each line based on the first token.
+   * @link https://tools.ietf.org/html/rfc3501#section-2.2.2
+   */
   protected initialize(): void {
-    this.lines.forEach((line, _) => {
+    this.lines.forEach(line => {
       let [token, data] = bisect(line);
       if (!token) {
         return;
@@ -149,38 +162,54 @@ export class Response {
       }
       this.tag = token !== '*' ? token : undefined;
       try {
-        this.parseLine(data);
+        this.parse(data);
       } catch (error) {
         throw error;
       }
     });
   }
 
-  protected parseLine(data: string): void {
-    let [head, tail] = bisect(data);
-    if (!head) return;
-    let i = parseInt(head, 10);
-    let numeric = !isNaN(i);
-    let [headOfTail, tailOfTail] = bisect(tail);
-    let numericKey = headOfTail ?? tail;
+  protected parse(line: string): void {
+    let [token, data] = bisect(line);
+    if (!token) return;
+    let n = parseInt(token, 10);
+    let numeric = !isNaN(n);
+    if (numeric) {
+      let [head, tail] = bisect(data);
+      token = head ?? data;
+      data = tail ?? data;
+    }
     switch (true) {
-      case numeric && numericKey in MailboxSizeUpdate:
-        this.parseMailboxSizeResponse(numericKey as MailboxSizeUpdate, i);
+      case token in MailboxSizeUpdate:
+        this.data[token] = n;
         break;
-      case numeric && numericKey in MessageStatus:
-        this.parseMessageStatusResponse(numericKey as MessageStatus, i, tailOfTail);
+      case token === MessageStatus.EXPUNGE:
+        if (this.data[token] === undefined) {
+          this.data[token] = [];
+        }
+        this.data[token]?.push(n);
         break;
-      case head in Status:
-        this.status = head as Status;
-        let parsed = parseStatusResponse(this.status, tail);
+      case token === MessageStatus.FETCH:
+        if (this.data[token] === undefined) {
+          this.data[token] = new Map() as Map<number, {}>;
+        }
+        let message = parseFetchResponse(data);
+        if (message !== undefined) {
+          this.data[token]?.set(n, message);
+        }
+        break;
+      case token in Status:
+        let status = token as Status;
+        let parsed = parseStatusResponse(status, data);
+        this.status = status;
         this.codes = this.codes.concat(parsed.codes);
         this.text = parsed.text;
         break;
-      case head in ServerStatus:
-        this.parseServerStatusResponse(head as ServerStatus, tail);
+      case token in ServerStatus:
+        this.parseServerStatusResponse(token as ServerStatus, data);
         break;
       default:
-        throw new Error(`Unprocessed response: ${data}`);
+        throw new Error(`Unprocessed response: ${line}`);
     }
   }
 
@@ -190,17 +219,9 @@ export class Response {
    */
   protected parseServerStatusResponse(state: ServerStatus, data: string): void {
     switch (state) {
-      /**
-       * `CAPABILITY` Response
-       * @link https://tools.ietf.org/html/rfc3501#section-7.2.1
-       */
       case ServerStatus.CAPABILITY:
         this.data[state] = data.split(` `);
         break;
-      /**
-       * `LIST` Response
-       * @link https://tools.ietf.org/html/rfc3501#section-7.2.2
-       */
       case ServerStatus.LIST:
         let m = data.match(/^\((.*)\)\s(\S+)\s(.+)$/);
         if (m) {
@@ -222,78 +243,6 @@ export class Response {
         break;
       default:
         throw new Error(`Unprocessed Server State Response: ${state} ${data}`);
-    }
-  }
-
-  /**
-   * Parse a Mailbox Size response
-   * @link https://tools.ietf.org/html/rfc3501#section-7.3
-   */
-  protected parseMailboxSizeResponse(key: MailboxSizeUpdate, size: number): void {
-    this.data[key] = size;
-  }
-
-  /**
-   * Parse a Message Status response.
-   * @link https://tools.ietf.org/html/rfc3501#section-7.4
-   */
-  protected parseMessageStatusResponse(key: MessageStatus, sequence: number, data?: string): void {
-    switch(key) {
-      case MessageStatus.EXPUNGE:
-        if (this.data[key] === undefined) {
-          this.data[key] = [];
-        }
-        this.data[key]?.push(sequence);
-        break;
-      case MessageStatus.FETCH:
-        this.parseFetchResponse(sequence, data);
-        break;
-      default:
-        throw new Error(`Unprocessed Message Status Response: ${key} ${sequence} ${data}`);
-    }
-  }
-
-  /**
-   * Parse a FETCH response.
-   * @link https://tools.ietf.org/html/rfc3501#section-7.4.2
-   */
-  protected parseFetchResponse(sequence: number, data?: string): void {
-    if (!data) return;
-    if (this.data[MessageStatus.FETCH] === undefined) {
-      this.data[MessageStatus.FETCH] = new Map() as Map<number, {}>;
-    }
-    let deliteral = deliteralize(data);
-    // extract [item, ...] from string `(item (...))`
-    let m1 = deliteral.match(/^\((\S+)\s\((.*)\)\)$/s);
-    if (m1) {
-      let message = this.data[MessageStatus.FETCH]?.get(sequence) ?? {};
-      let item = m1[1].toUpperCase();
-      // BODY or BODY[...]
-      if (item.length > 4 && item.indexOf(MessageDataItem.BODY) === 0) {
-        item = MessageDataItem.BODY;
-      }
-      if (!(item in MessageDataItem)) {
-        throw new Error(`Unsupported Message Data Item: ${item}.`);
-      }
-      switch (item) {
-        case MessageDataItem.ENVELOPE:
-          message[item] = Envelope.from(m1[2]);
-          break;
-        case MessageDataItem.BODY:
-          let m2 = item.match(/^BODY\[(.+)\](\<(.*)\>)?$/s);
-          if (m2) {
-            let section = m2[1];
-            let octet = m2[3];
-            message[item] = { section, octet, data };
-          } else {
-            message[item] = { data };
-          }
-          break;
-        default:
-          message[item] = { data };
-          break;
-      }
-      this.data[MessageStatus.FETCH]?.set(sequence, message);
     }
   }
 
@@ -363,8 +312,8 @@ export let linesFromResponseWithStringLiterals = (data: string): string[] => {
     }
     literal = literal && octet.index !== octet.target;
   });
-  if (buffer !== '') lines.push(buffer);
-  return lines;
+  if (buffer !== '') throw new Error(`Invalid/incomplete buffer (not terminated with CRLF?): ${buffer}`);
+  return lines.map(deliteralize);
 }
 
 export interface ParsedStatusResponse { codes: ResponseCode[], text?: string };
@@ -377,16 +326,133 @@ export let parseStatusResponse = (status: Status, data?: string): ParsedStatusRe
     codes: [],
   };
   if (data) {
-    let m = data.match(/^[\[](.+)[\]]\s{1}(.*)$/);
-    if (m) {
-      let [a, b] = bisect(m[1]);
+    let match = data.match(/^[\[](.+)[\]]\s{1}(.*)$/);
+    if (match) {
+      let [a, b] = bisect(match[1]);
       let code = a
-        ? new ResponseCode(status, a, b, m[2])
-        : new ResponseCode(status, m[1], undefined, m[2]);
+        ? new ResponseCode(status, a, b, match[2])
+        : new ResponseCode(status, match[1], undefined, match[2]);
       result.codes.push(code);
     } else {
       result.text = data;
     }
   }
+  return result;
+}
+
+/**
+ * Parse a FETCH response.
+ * @link https://tools.ietf.org/html/rfc3501#section-7.4.2
+ */
+let parseFetchResponse = (response?: string): MessageData => {
+  let data: MessageData = {};
+  if (response !== undefined) {
+    let extracted = extractMessageData(response);
+    let keys = Object.keys(extracted);
+    keys.forEach(key => {
+      let item = key.toUpperCase();
+      let value = extracted[key];
+      if (item.indexOf(MessageDataItem.BODY) === 0) {
+        item = MessageDataItem.BODY;
+      }
+      if (!(item in MessageDataItem)) {
+        throw new Error(`Unknown message data item: ${key}`);
+      }
+      switch(item) {
+        case MessageDataItem.ENVELOPE:
+          let dep = deparenthesize(value);
+          console.dir({ dep })
+          data[item] = Envelope.from(deparenthesize(value));
+          console.dir('enveloped')
+          break;
+        case MessageDataItem.FLAGS:
+          data[item] = deparenthesize(value).split(`\s`);
+          break;
+        case MessageDataItem.INTERNALDATE:
+          data[item] = unquote(value);
+          break;
+        case MessageDataItem.BODY:
+          if (data[item] === undefined) {
+            data[item] = {};
+          }
+          let template = /^(BODY|BODY\.PEEK)\[(?<section>.+)\](\<(?<partial>.*)\>)?$/;
+          let match = key.toUpperCase().match(template);
+          if (match !== null && match.groups !== undefined) {
+            data[item][match.groups?.section] = value;
+          } else {
+            data[item] = value;
+          }
+          break;
+        default:
+          data[item] = value;
+          break;
+      }
+    })
+  }
+  console.dir(data);
+  return data;
+}
+
+export let extractMessageData = (data: string): MessageData => {
+  let result: MessageData = {};
+  let buffer = '';
+  let item;
+  let start;
+  let skip = 0;
+  [...deparenthesize(data)].forEach((current) => {
+    let previous = buffer[buffer.length - 1];
+    buffer += current;
+    switch(true) {
+      case item === undefined:
+        switch(true) {
+          case current === ` ` && buffer === ` `:
+            buffer = '';
+            break;
+          case current === ` `:
+            item = buffer.slice(0, -1);
+            start = undefined;
+            buffer = '';
+            skip = 0;
+            break;
+        }
+        break;
+      case start === undefined:
+        start = current;
+        break;
+      // Parentheses
+      case start === '(':
+        switch(true) {
+          case current === '(':
+            skip++;
+            break;
+          case current === ')' && skip > 0:
+            skip--;
+            break;
+          case current === ')' && skip === 0:
+            result[item] = buffer;
+            item = undefined;
+            start = undefined;
+            buffer = '';
+          break;
+        }
+        break;
+      // Quotes
+      case start === '"':
+        if (current === '"' && previous !== `\\`) {
+          result[item] = buffer;
+          item = undefined;
+          start = undefined;
+          buffer = '';
+        }
+        break;
+      // Unquoted, non-whitespace string
+      case current === `\s`:
+        result[item] = buffer;
+        start = undefined;
+        buffer = '';
+        break;
+    }
+  });
+  if (buffer !== '') throw new Error(`Invalid/incomplete buffer: ${buffer}`);
   return result;
 }
