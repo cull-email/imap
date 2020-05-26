@@ -167,9 +167,6 @@ test('Client can list all envelopes for a mailbox.', async t => {
 
 test('Client can list all messages for a mailbox.', async t => {
   let c = testClient(t);
-  c.on('debug', (...args) => {
-    console.dir(args);
-  });
   try {
     await c.connect();
     let e = await c.messages();

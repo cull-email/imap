@@ -109,8 +109,10 @@ export enum State {
 /**
  * __An IMAP Connection__
  *
- * Things explicitly not currently implemented:
+ * Things not currently implemented nor on the roadmap:
  * - Insecure (non-TLS) connections. (https://tools.ietf.org/html/rfc8314)
+ * - IDLE
+ * - SUBSCRIBE
  */
 export class Connection extends EventEmitter {
   /**
