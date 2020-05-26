@@ -1,5 +1,7 @@
 import test from 'ava';
-import Response, { Status, ServerStatus, MessageStatus, MessageData, MessageDataItem } from './response';
+import Response, {
+  Status, ServerStatus, MessageStatus, MessageData, MessageDataItem, extractMessageData
+} from './response';
 import { Code } from './code';
 import Envelope from './envelope';
 
@@ -138,7 +140,7 @@ test('Response can process an EXPUNGE response with multiple sequences.', t => {
 test('Response can process a FETCH response with an envelope.', t => {
   let response = new Response(
     Buffer.from(
-      `* 1 FETCH (envelope ("Mon, 5 May 2020 00:00:01 -1000" {14}\r\n"test" literal (("Jon" NIL "jon" "cull.email")) (("Jon" NIL "jon" "cull.email")) (("Jon" NIL "jon" "cull.email")) ((NIL NIL "jaclyn" "cull.email")) NIL NIL NIL "<8ECD42F9-2045-4EF3-8287-BD7E0F2A3C90@cull.email>"))\r\n`
+      `* 1 FETCH (FLAGS () INTERNALDATE "25-May-2020 06:52:30 +0000" BODY[HEADER] {33}\r\nDelivered-To: jaclyn@cull.email\r\n ENVELOPE ("Sun, 24 May 2020 20:52:24 -1000" "test" (("Jon Adams" NIL "jon" "cull.email")) (("Jon Adams" NIL "jon" "cull.email")) (("Jon Adams" NIL "jon" "cull.email")) ((NIL NIL "manuel22" "ethereal.email")) NIL NIL NIL "<7F587D8A-7BBF-4FF8-8815-649279EF3D39@cull.email>"))\r\n`
     )
   );
   t.truthy(response.data[MessageStatus.FETCH]);
@@ -146,6 +148,5 @@ test('Response can process a FETCH response with an envelope.', t => {
   let envelope = message[MessageDataItem.ENVELOPE];
   t.truthy(envelope);
   t.true(envelope instanceof Envelope);
-  t.is(envelope.date, 'Mon, 5 May 2020 00:00:01 -1000');
+  t.is(envelope.date, 'Sun, 24 May 2020 20:52:24 -1000');
 });
-
