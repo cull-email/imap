@@ -2,9 +2,11 @@ import ResponseCode from './code';
 import Patterns, {
   bisect,
   unquote,
+  unescape,
   deliteralize,
   deparenthesize
 } from './patterns';
+import Header from './header';
 import Envelope from './envelope';
 
 /**
@@ -360,24 +362,28 @@ let parseFetchResponse = (response?: string): MessageData => {
       }
       switch(item) {
         case MessageDataItem.ENVELOPE:
-          let dep = deparenthesize(value);
-          console.dir({ dep })
           data[item] = Envelope.from(deparenthesize(value));
-          console.dir('enveloped')
           break;
         case MessageDataItem.FLAGS:
-          data[item] = deparenthesize(value).split(`\s`);
+          data[item] = deparenthesize(value).split(`\s`).filter(flag => flag !== '');
           break;
         case MessageDataItem.INTERNALDATE:
           data[item] = unquote(value);
           break;
+        case MessageDataItem.HEADER:
+          data[item] = new Header(value);
+          break;
         case MessageDataItem.BODY:
+          value = unescape(unquote(value));
           if (data[item] === undefined) {
             data[item] = {};
           }
           let template = /^(BODY|BODY\.PEEK)\[(?<section>.+)\](\<(?<partial>.*)\>)?$/;
           let match = key.toUpperCase().match(template);
           if (match !== null && match.groups !== undefined) {
+            if (match.groups?.section === 'HEADER') {
+              value = new Header(value);
+            }
             data[item][match.groups?.section] = value;
           } else {
             data[item] = value;
@@ -389,7 +395,6 @@ let parseFetchResponse = (response?: string): MessageData => {
       }
     })
   }
-  console.dir(data);
   return data;
 }
 
