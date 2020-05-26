@@ -10,7 +10,7 @@ test('Response can process a server response including multiple lines and string
   t.is(response.lines.length, 3);
   t.deepEqual(response.lines, [
     '* OK Line 1',
-    `* OK Line {4}\r\n2 \r\n`,
+    `* OK Line "2 \r\n"`,
     '* OK Line 3'
   ]);
 });

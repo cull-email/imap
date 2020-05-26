@@ -3,11 +3,11 @@ import Envelope from './envelope';
 
 test('Envelope can parse a string response into an Envelope', t => {
   let result = Envelope.from(
-    `"Mon, 5 May 2020 00:00:01 -1000" {6}\r\ntest\r\n (("Jon" NIL "jon" "cull.email")) (("Jan" NIL "jan" "cull.email")) (("Jin" NIL "jin" "cull.email")) ((NIL NIL "jaclyn" "cull.email")) NIL NIL NIL "<8ECD42F9-2045-4EF3-8287-BD7E0F2A3C90@cull.email>"`
+    `"Mon, 5 May 2020 00:00:01 -1000" "test \r\n \\"" (("Jon" NIL "jon" "cull.email")) (("Jan" NIL "jan" "cull.email")) (("Jin" NIL "jin" "cull.email")) ((NIL NIL "jaclyn" "cull.email")) NIL NIL NIL "<8ECD42F9-2045-4EF3-8287-BD7E0F2A3C90@cull.email>"`
   );
   let expected = new Envelope();
   expected.date = 'Mon, 5 May 2020 00:00:01 -1000';
-  expected.subject = `test\r\n`;
+  expected.subject = `test \r\n \\"`;
   expected.from = [
     { host: 'cull.email', mailbox: 'jon', name: 'Jon' }
   ];
