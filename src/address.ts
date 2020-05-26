@@ -37,7 +37,7 @@ export class Address {
 export default Address;
 
 export let parseList = (input: string): Address[] => {
-  let pattern = new RegExp(Patterns.parenthesizedList.source, 'g');
+  let pattern = new RegExp(/\(([^\(\)]+)\)/, 'g');
   let addresses = input.match(pattern) ?? [];
   return addresses.map(parse);
 }

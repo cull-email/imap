@@ -4,8 +4,7 @@ export let Patterns = {
   stringLiteralSplit: new RegExp(/^(?<head>[^\{|.]*)\{(?<octets>\d+)\}\r\n(?<tail>.+)$/s),
   nilOrString: new RegExp(/NIL|(?<!\\)"(.*?)(?<!\\)"/),
   parenthesized: new RegExp(/\((.*)\)/),
-  nilOrParenthesized: new RegExp(/NIL|\((.*)\)/),
-  parenthesizedList: new RegExp(/\(([^\(\)]+)\)/),
+  nilOrParenthesized: new RegExp(/NIL|\((.*)\)/)
 }
 
 export default Patterns;

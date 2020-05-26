@@ -32,7 +32,6 @@ test('deliteralize string literals interspersed in a string', t => {
   t.is(result, '"1234 \\" " "5678" "foo" \r\n');
 });
 
-
 test('unquote a string to remove boundary double quotes', t => {
   let result = unquote(`"testing quotes"`);
   t.is(result, 'testing quotes');
