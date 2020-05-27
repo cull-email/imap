@@ -1,19 +1,15 @@
-import Patterns, {
-  named as namedPattern,
-  compile as compilePattern,
-  unquote,
-} from './patterns';
+import Patterns, { named as namedPattern, compile as compilePattern, unquote } from './patterns';
 import Address, { parseList as parseAddresses } from './address';
 
 export let template = compilePattern([
-  namedPattern('date',      Patterns.string),
-  namedPattern('subject',   Patterns.nilOrString),
-  namedPattern('from',      Patterns.parenthesized),
-  namedPattern('sender',    Patterns.parenthesized),
-  namedPattern('replyTo',   Patterns.parenthesized),
-  namedPattern('to',        Patterns.nilOrParenthesized),
-  namedPattern('cc',        Patterns.nilOrParenthesized),
-  namedPattern('bcc',       Patterns.nilOrParenthesized),
+  namedPattern('date', Patterns.string),
+  namedPattern('subject', Patterns.nilOrString),
+  namedPattern('from', Patterns.parenthesized),
+  namedPattern('sender', Patterns.parenthesized),
+  namedPattern('replyTo', Patterns.parenthesized),
+  namedPattern('to', Patterns.nilOrParenthesized),
+  namedPattern('cc', Patterns.nilOrParenthesized),
+  namedPattern('bcc', Patterns.nilOrParenthesized),
   namedPattern('inReplyTo', Patterns.nilOrString, true),
   namedPattern('messageId', Patterns.nilOrString, true)
 ]);
@@ -78,7 +74,7 @@ export class Envelope {
   }
 }
 
-export let parseFromString = (response:string): Envelope => {
+export let parseFromString = (response: string): Envelope => {
   let match = response.match(template);
   if (!match || !match.groups) {
     throw new Error(`Could not parse envelope from response: ${response}`);
@@ -100,6 +96,6 @@ export let parseFromString = (response:string): Envelope => {
     }
   });
   return envelope;
-}
+};
 
 export default Envelope;

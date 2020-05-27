@@ -8,6 +8,7 @@ import Response, {
   MessageStatus,
   FetchResponseData,
   MessageDataItem,
+  MessageData
 } from './response';
 import { Code } from './code';
 import { Command } from './command';
@@ -44,6 +45,9 @@ export interface Preferences extends ConnectionPreferences {
   id?: string;
 }
 
+/**
+ * __An IMAP Client__
+ */
 export default class Client extends EventEmitter {
   /**
    * A unique identifier.
@@ -152,10 +156,14 @@ export default class Client extends EventEmitter {
     Object.keys(response.data).forEach(key => {
       switch (key) {
         case ServerStatus.CAPABILITY:
-          (response.data[key] as Capabilities).forEach(capability => this.capabilities.add(capability));
+          (response.data[key] as Capabilities).forEach(capability =>
+            this.capabilities.add(capability)
+          );
           break;
         case ServerStatus.LIST:
-          (response.data[key] as Mailboxes).forEach(mailbox => this._mailboxes.set(mailbox.name, mailbox));
+          (response.data[key] as Mailboxes).forEach(mailbox =>
+            this._mailboxes.set(mailbox.name, mailbox)
+          );
           break;
         case ServerStatus.FLAGS:
           if (this.selected) {
@@ -188,7 +196,7 @@ export default class Client extends EventEmitter {
   protected analyzeFetchResponseData(data: FetchResponseData): void {
     data.forEach((message, sequence) => {
       Object.keys(message).forEach(item => {
-        switch(item) {
+        switch (item) {
           case MessageDataItem.ENVELOPE:
             this._envelopes.set(sequence, message[item]);
             break;
@@ -207,7 +215,11 @@ export default class Client extends EventEmitter {
    * @param children (`boolean`, default: `true`) Return children under this hierarchy
    * @param path (`string`, default: empty) The name of a mailbox or level of hierarchy
    */
-  async mailboxes(flatten: boolean = false, children: boolean = true, path: string = ''): Promise<Map<string, Mailbox>> {
+  async mailboxes(
+    flatten: boolean = false,
+    children: boolean = true,
+    path: string = ''
+  ): Promise<Map<string, Mailbox>> {
     return new Promise(async (resolve, reject) => {
       try {
         let wildcard = children ? '*' : '%';
@@ -251,7 +263,7 @@ export default class Client extends EventEmitter {
       } catch (error) {
         return reject(error);
       }
-    })
+    });
   }
 
   /**
@@ -269,11 +281,10 @@ export default class Client extends EventEmitter {
         let select = new Command('select', name);
         let response = await this.connection.exchange(select);
         if (response.status === ResponseStatus.OK) {
-
           return resolve(this.selected);
         }
         throw response;
-      } catch(error) {
+      } catch (error) {
         this.selected = undefined;
         return reject(error);
       }
@@ -287,7 +298,11 @@ export default class Client extends EventEmitter {
    * @param sequence (`string) sequence set
    * @param timeout (`number`) timeout in seconds
    */
-  async envelopes(name: string = 'INBOX', sequence: string = '1:10', timeout?: number): Promise<Map<number, Envelope>> {
+  async envelopes(
+    name: string = 'INBOX',
+    sequence: string = '1:10',
+    timeout?: number
+  ): Promise<Map<number, Envelope>> {
     this._envelopes = new Map();
     return new Promise(async (resolve, reject) => {
       try {
@@ -298,18 +313,23 @@ export default class Client extends EventEmitter {
           return resolve(this._envelopes);
         }
         throw response;
-      } catch(error) {
+      } catch (error) {
         return reject(error);
       }
     });
   }
 
-  async messages(name: string = 'INBOX', sequence: string = '1:10', timeout?: number): Promise<Messages> {
+  async messages(
+    name: string = 'INBOX',
+    sequence: string = '1:10',
+    items: string[] = ['FLAGS', 'INTERNALDATE', 'BODY.PEEK'],
+    timeout?: number
+  ): Promise<Messages> {
     this._messages = new Map();
     return new Promise(async (resolve, reject) => {
       try {
         await this.select(name);
-        let command = new Command('fetch', `${sequence} (FLAGS INTERNALDATE BODY.PEEK[HEADER] ENVELOPE)`);
+        let command = new Command('fetch', `${sequence} (${items.join(' ')})`);
         let response = await this.connection.exchange(command, timeout);
         if (response.status === ResponseStatus.OK) {
           return resolve(this._messages);
@@ -358,7 +378,7 @@ export let mailboxTree = (map: Map<string, Mailbox>): Map<string, Mailbox> => {
       components.pop();
       let parent = map.get(components.join(mailbox.delimiter));
       if (parent) {
-        parent.children ? parent.children.push(mailbox) : parent.children = [mailbox];
+        parent.children ? parent.children.push(mailbox) : (parent.children = [mailbox]);
       } else {
         throw new Error(`Dangling mailbox: ${mailbox}`);
       }
@@ -367,4 +387,4 @@ export let mailboxTree = (map: Map<string, Mailbox>): Map<string, Mailbox> => {
     }
   });
   return tree;
-}
+};

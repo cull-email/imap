@@ -1,6 +1,11 @@
 import test from 'ava';
 import Response, {
-  Status, ServerStatus, MessageStatus, MessageData, MessageDataItem, extractMessageData
+  Status,
+  ServerStatus,
+  MessageStatus,
+  MessageData,
+  MessageDataItem,
+  extractMessageData
 } from './response';
 import { Code } from './code';
 import Envelope from './envelope';
@@ -10,11 +15,7 @@ test('Response can process a server response including multiple lines and string
     Buffer.from('* OK Line 1\r\n* OK Line {4}\r\n2 \r\n\r\n* OK Line 3\r\n')
   );
   t.is(response.lines.length, 3);
-  t.deepEqual(response.lines, [
-    '* OK Line 1',
-    `* OK Line "2 \r\n"`,
-    '* OK Line 3'
-  ]);
+  t.deepEqual(response.lines, ['* OK Line 1', `* OK Line "2 \r\n"`, '* OK Line 3']);
 });
 
 test('Response can process a server ready response.', t => {
@@ -67,7 +68,11 @@ test('Response can process an untagged CAPABILITY response.', t => {
 });
 
 test('Response can process an untagged LIST response.', t => {
-  let response = new Response(Buffer.from(`* LIST (\\HasNoChildren) "/" "INBOX"\r\n* LIST () "/" "Foo"\r\n* LIST () "/" "Foo/Bar"`));
+  let response = new Response(
+    Buffer.from(
+      `* LIST (\\HasNoChildren) "/" "INBOX"\r\n* LIST () "/" "Foo"\r\n* LIST () "/" "Foo/Bar"`
+    )
+  );
   t.is(response.tag, undefined);
   t.is(response.status, undefined);
   t.is(response.data[ServerStatus.LIST].length, 3);
@@ -81,7 +86,7 @@ test('Response can process an untagged LIST response.', t => {
     name: 'Foo/Bar',
     delimiter: '/',
     attributes: []
-  }
+  };
   t.deepEqual(response.data[ServerStatus.LIST][2], expected);
 });
 
@@ -97,20 +102,14 @@ test('Response can process a tagged LIST response preceded with multiple untagge
 });
 
 test('Response can process an untagged FLAGS response.', t => {
-  let response = new Response(
-    Buffer.from(
-      `* FLAGS (\\Seen \\Drafts \\*)\r\n`
-    )
-  );
+  let response = new Response(Buffer.from(`* FLAGS (\\Seen \\Drafts \\*)\r\n`));
   t.is(response.tag, undefined);
   t.deepEqual(response.data[ServerStatus.FLAGS], ['\\Seen', '\\Drafts', '\\*']);
 });
 
 test('Response can process an untagged OK response with PERMANENTFLAGS.', t => {
   let response = new Response(
-    Buffer.from(
-      `* OK [PERMANENTFLAGS (\\Seen \\Drafts \\*)] Flags permitted\r\n`
-    )
+    Buffer.from(`* OK [PERMANENTFLAGS (\\Seen \\Drafts \\*)] Flags permitted\r\n`)
   );
   t.is(response.status, Status.OK);
   t.is(response.codes[0].code, Code.PERMANENTFLAGS);
@@ -118,22 +117,14 @@ test('Response can process an untagged OK response with PERMANENTFLAGS.', t => {
 });
 
 test('Response can process an untagged OK response with UIDVALIDITY', t => {
-  let response = new Response(
-    Buffer.from(
-      `* OK [UIDVALIDITY 1588148011] UIDs valid]\r\n`
-    )
-  );
+  let response = new Response(Buffer.from(`* OK [UIDVALIDITY 1588148011] UIDs valid]\r\n`));
   t.is(response.status, Status.OK);
   t.is(response.codes[0].code, Code.UIDVALIDITY);
   t.is(response.codes[0].data, '1588148011');
 });
 
 test('Response can process an EXPUNGE response with multiple sequences.', t => {
-  let response = new Response(
-    Buffer.from(
-      `* 1 EXPUNGE\r\n* 5 EXPUNGE\r\n* 3 EXPUNGE\r\n`
-    )
-  );
+  let response = new Response(Buffer.from(`* 1 EXPUNGE\r\n* 5 EXPUNGE\r\n* 3 EXPUNGE\r\n`));
   t.deepEqual(response.data[MessageStatus.EXPUNGE], [1, 5, 3]);
 });
 

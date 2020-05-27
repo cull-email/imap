@@ -21,7 +21,7 @@ export let testClient = (t: ExecutionContext, preferences: Preferences = testPre
     t.fail(...args);
   });
   return client;
-}
+};
 
 test('Client id is generated when unspecified.', t => {
   let c = new Client({
@@ -91,22 +91,22 @@ test('Client can list mailboxes.', async t => {
       {
         attributes: ['\\HasNoChildren', '\\Drafts'],
         delimiter: '/',
-        name: 'Drafts',
+        name: 'Drafts'
       },
       {
         attributes: ['\\HasNoChildren', '\\Junk'],
         delimiter: '/',
-        name: 'Junk',
+        name: 'Junk'
       },
       {
         attributes: ['\\HasNoChildren', '\\Sent'],
         delimiter: '/',
-        name: 'Sent Mail',
+        name: 'Sent Mail'
       },
       {
         attributes: ['\\HasNoChildren', '\\Trash'],
         delimiter: '/',
-        name: 'Trash',
+        name: 'Trash'
       }
     ];
     t.deepEqual([...m.values()], expected);
@@ -157,7 +157,7 @@ test('Client can list all envelopes for a mailbox.', async t => {
     await c.connect();
     let e = await c.envelopes();
     t.is([...e.values()].length, 0);
-  } catch(error) {
+  } catch (error) {
     t.log(error);
     t.fail('An unexpected error has occurred.');
   } finally {
@@ -171,7 +171,7 @@ test('Client can list all messages for a mailbox.', async t => {
     await c.connect();
     let e = await c.messages();
     t.is([...e.values()].length, 0);
-  } catch(error) {
+  } catch (error) {
     t.log(error);
     t.fail('An unexpected error has occurred.');
   } finally {

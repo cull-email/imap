@@ -5,7 +5,7 @@ export let Patterns = {
   nilOrString: new RegExp(/NIL|(?<!\\)"(.*?)(?<!\\)"/),
   parenthesized: new RegExp(/\((.*)\)/),
   nilOrParenthesized: new RegExp(/NIL|\((.*)\)/)
-}
+};
 
 export default Patterns;
 
@@ -28,7 +28,7 @@ export let compile = (patterns: NamedPattern[], singleline: boolean = true): Reg
     source.push(re);
   });
   return new RegExp(`^${source.join('\\s')}$`, singleline ? 's' : undefined);
-}
+};
 
 /**
  * Remove  quotes from a string
@@ -39,22 +39,22 @@ export let unquote = (input?: string): string => {
 
 export let quote = (input?: string): string => {
   return input ? `"${input}"` : '""';
-}
+};
 
 export let unescape = (input?: string): string => {
   return input ? input.replace('\\"', '"') : '';
-}
+};
 
 export let escape = (input?: string): string => {
   return input ? input.replace('"', '\\"') : '';
-}
+};
 
 /**
  * Strip parentheses from a string
  */
 export let deparenthesize = (input?: string): string => {
   return input ? input.replace(/^\((.*)\)$/s, '$1') : '';
-}
+};
 
 /**
  * Bisect a string using the first occurrence of whitespace
@@ -85,4 +85,4 @@ export let deliteralize = (input: string): string => {
     }
   }
   return buffer;
-}
+};

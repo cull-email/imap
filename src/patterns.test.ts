@@ -2,10 +2,7 @@ import test from 'ava';
 import Patterns, { compile, named, deliteralize, unquote, unescape } from './patterns';
 
 test('Patterns can be combined named patterns for keyed extraction', t => {
-  let patterns = [
-    named('a', Patterns.string, false),
-    named('b', Patterns.nilOrString, true)
-  ];
+  let patterns = [named('a', Patterns.string, false), named('b', Patterns.nilOrString, true)];
   let pattern = compile(patterns, true);
   let matches = `"1234 \\" \r\n" "5678"`.match(pattern);
   if (matches === null || matches.groups === undefined) {

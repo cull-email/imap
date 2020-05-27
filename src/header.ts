@@ -16,9 +16,7 @@ export class Header extends Map<string, string | string[]> {
         this.set(key, value);
         return;
       }
-      let merged = Array.isArray(existing)
-        ? existing.concat(value)
-        : [existing].concat(value);
+      let merged = Array.isArray(existing) ? existing.concat(value) : [existing].concat(value);
       this.set(key, merged);
     });
   }
@@ -26,12 +24,12 @@ export class Header extends Map<string, string | string[]> {
   toString(): string {
     let keys = [...this.keys()];
     if (!!keys.length) return '';
-    return keys.map(key => {
-      let value = this.get(key);
-      return Array.isArray(value)
-        ? value.join(' ')
-        : value;
-    }).join('\r\n');
+    return keys
+      .map(key => {
+        let value = this.get(key);
+        return Array.isArray(value) ? value.join(' ') : value;
+      })
+      .join('\r\n');
   }
 }
 

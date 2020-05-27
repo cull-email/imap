@@ -2,6 +2,17 @@
 
 A minimal IMAP client interface exposing mailboxes, envelopes and messages.
 
+## Limitations
+
+This library is neither feature complete nor __Production Ready™__.
+
+It is intended for short-lived connections and is generally useful as an introduction to IMAP and for quickly retrieving mailboxes, envelopes and message data in most cases.
+
+The following is not currently implemented:
+
+* Insecure (non-TLS) connections. _See [Cleartext Considered Obsolete: Use of Transport Layer Security (TLS) for Email Submission and Access](https://tools.ietf.org/html/rfc8314)_
+* Automatic UTF-7 encoding/decoding.
+
 ## Installation
 
 ```sh

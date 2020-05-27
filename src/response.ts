@@ -1,11 +1,5 @@
 import ResponseCode from './code';
-import Patterns, {
-  bisect,
-  unquote,
-  unescape,
-  deliteralize,
-  deparenthesize
-} from './patterns';
+import Patterns, { bisect, unquote, unescape, deliteralize, deparenthesize } from './patterns';
 import Header from './header';
 import Envelope from './envelope';
 
@@ -65,7 +59,7 @@ export enum MessageStatus {
 export interface MessageStatusResponseData {
   EXPUNGE?: number[];
   FETCH?: FetchResponseData;
-};
+}
 /**
  * Message data map keyed by Sequence #
  */
@@ -89,9 +83,11 @@ export enum MessageDataItem {
 }
 export type MessageData = {
   [key in MessageDataItem]?: any;
-}
+};
 
-export type Data = ServerStatusResponseData & MailboxSizeUpdateResponseData & MessageStatusResponseData;
+export type Data = ServerStatusResponseData &
+  MailboxSizeUpdateResponseData &
+  MessageStatusResponseData;
 
 /**
  * __An IMAP Server Response__
@@ -274,10 +270,8 @@ export default Response;
  */
 export let linesFromResponse = (data: string): string[] => {
   let containsLiterals = data.match(Patterns.stringLiteralPrefix);
-  return containsLiterals === null
-    ? data.split(`\r\n`)
-    : linesFromResponseWithStringLiterals(data);
-}
+  return containsLiterals === null ? data.split(`\r\n`) : linesFromResponseWithStringLiterals(data);
+};
 
 /**
  * Break single string multi-line response into array of strings by `\r\n`.
@@ -314,18 +308,22 @@ export let linesFromResponseWithStringLiterals = (data: string): string[] => {
     }
     literal = literal && octet.index !== octet.target;
   });
-  if (buffer !== '') throw new Error(`Invalid/incomplete buffer (not terminated with CRLF?): ${buffer}`);
+  if (buffer !== '')
+    throw new Error(`Invalid/incomplete buffer (not terminated with CRLF?): ${buffer}`);
   return lines.map(deliteralize);
-}
+};
 
-export interface ParsedStatusResponse { codes: ResponseCode[], text?: string };
+export interface ParsedStatusResponse {
+  codes: ResponseCode[];
+  text?: string;
+}
 /**
  * Parse a general Status response
  * @link https://tools.ietf.org/html/rfc3501#section-7.1
  */
 export let parseStatusResponse = (status: Status, data?: string): ParsedStatusResponse => {
   let result: ParsedStatusResponse = {
-    codes: [],
+    codes: []
   };
   if (data) {
     let match = data.match(/^[\[](.+)[\]]\s{1}(.*)$/);
@@ -340,7 +338,7 @@ export let parseStatusResponse = (status: Status, data?: string): ParsedStatusRe
     }
   }
   return result;
-}
+};
 
 /**
  * Parse a FETCH response.
@@ -360,12 +358,14 @@ let parseFetchResponse = (response?: string): MessageData => {
       if (!(item in MessageDataItem)) {
         throw new Error(`Unknown message data item: ${key}`);
       }
-      switch(item) {
+      switch (item) {
         case MessageDataItem.ENVELOPE:
           data[item] = Envelope.from(deparenthesize(value));
           break;
         case MessageDataItem.FLAGS:
-          data[item] = deparenthesize(value).split(`\s`).filter(flag => flag !== '');
+          data[item] = deparenthesize(value)
+            .split(`\s`)
+            .filter(flag => flag !== '');
           break;
         case MessageDataItem.INTERNALDATE:
           data[item] = unquote(value);
@@ -393,10 +393,10 @@ let parseFetchResponse = (response?: string): MessageData => {
           data[item] = value;
           break;
       }
-    })
+    });
   }
   return data;
-}
+};
 
 export let extractMessageData = (data: string): MessageData => {
   let result: MessageData = {};
@@ -404,12 +404,12 @@ export let extractMessageData = (data: string): MessageData => {
   let item;
   let start;
   let skip = 0;
-  [...deparenthesize(data)].forEach((current) => {
+  [...deparenthesize(data)].forEach(current => {
     let previous = buffer[buffer.length - 1];
     buffer += current;
-    switch(true) {
+    switch (true) {
       case item === undefined:
-        switch(true) {
+        switch (true) {
           case current === ` ` && buffer === ` `:
             buffer = '';
             break;
@@ -426,7 +426,7 @@ export let extractMessageData = (data: string): MessageData => {
         break;
       // Parentheses
       case start === '(':
-        switch(true) {
+        switch (true) {
           case current === '(':
             skip++;
             break;
@@ -438,7 +438,7 @@ export let extractMessageData = (data: string): MessageData => {
             item = undefined;
             start = undefined;
             buffer = '';
-          break;
+            break;
         }
         break;
       // Quotes
@@ -460,4 +460,4 @@ export let extractMessageData = (data: string): MessageData => {
   });
   if (buffer !== '') throw new Error(`Invalid/incomplete buffer: ${buffer}`);
   return result;
-}
+};

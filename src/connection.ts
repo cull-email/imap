@@ -108,11 +108,6 @@ export enum State {
 
 /**
  * __An IMAP Connection__
- *
- * Things not currently implemented nor on the roadmap:
- * - Insecure (non-TLS) connections. (https://tools.ietf.org/html/rfc8314)
- * - IDLE
- * - SUBSCRIBE
  */
 export class Connection extends EventEmitter {
   /**
@@ -307,7 +302,7 @@ export class Connection extends EventEmitter {
           literal = false;
         }
         // CRLF
-        if ((b[offset] === 0x0A) && b[offset - 1] === 0x0D && !literal) {
+        if (b[offset] === 0x0a && b[offset - 1] === 0x0d && !literal) {
           let slice = b.slice(0, offset + 1);
           // https://tools.ietf.org/html/rfc3501#section-4.3
           let match = slice.toString('ascii').match(/^(.+)\{(?<target>(\d+))\}\r\n$/);
@@ -331,7 +326,7 @@ export class Connection extends EventEmitter {
     });
     this.socket.on('end', () => {
       this.state = State.Disconnected;
-      this.emit('end', 'Server closed connection.')
+      this.emit('end', 'Server closed connection.');
     });
     this.socket.on('close', error => {
       this.state = State.Disconnected;
