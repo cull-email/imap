@@ -7,8 +7,7 @@ import Response, {
   MailboxSizeUpdate,
   MessageStatus,
   FetchResponseData,
-  MessageDataItem,
-  MessageData
+  MessageDataItem
 } from './response';
 import { Code } from './code';
 import { Command } from './command';
@@ -219,7 +218,7 @@ export default class Client extends EventEmitter {
     flatten: boolean = false,
     children: boolean = true,
     path: string = ''
-  ): Promise<Map<string, Mailbox>> {
+  ): Promise<Mailboxes> {
     return new Promise(async (resolve, reject) => {
       try {
         let wildcard = children ? '*' : '%';
@@ -302,7 +301,7 @@ export default class Client extends EventEmitter {
     name: string = 'INBOX',
     sequence: string = '1:10',
     timeout?: number
-  ): Promise<Map<number, Envelope>> {
+  ): Promise<Envelopes> {
     this._envelopes = new Map();
     return new Promise(async (resolve, reject) => {
       try {
@@ -322,7 +321,7 @@ export default class Client extends EventEmitter {
   async messages(
     name: string = 'INBOX',
     sequence: string = '1:10',
-    items: string[] = ['FLAGS', 'INTERNALDATE', 'BODY.PEEK'],
+    items: string[] = ['UID', 'FLAGS', 'BODY.PEEK[]'],
     timeout?: number
   ): Promise<Messages> {
     this._messages = new Map();
@@ -334,6 +333,7 @@ export default class Client extends EventEmitter {
         if (response.status === ResponseStatus.OK) {
           return resolve(this._messages);
         }
+        throw response;
       } catch (error) {
         return reject(error);
       }
@@ -365,13 +365,13 @@ export default class Client extends EventEmitter {
   // }
 }
 
-export let mailboxTree = (map: Map<string, Mailbox>): Map<string, Mailbox> => {
+export let mailboxTree = (map: Mailboxes): Mailboxes => {
   let mailboxes = [...map.values()];
   mailboxes.forEach(mailbox => {
     // reset for idempotency
     delete mailbox.children;
   });
-  let tree: Map<string, Mailbox> = new Map();
+  let tree: Mailboxes = new Map();
   mailboxes.forEach(mailbox => {
     let components = mailbox.name.split(mailbox.delimiter);
     if (components.length > 1) {
