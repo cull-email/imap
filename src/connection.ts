@@ -293,34 +293,19 @@ export class Connection extends EventEmitter {
     this.state = State.NotAuthenticated;
     this.emit('connect', 'TLS connection established.');
     this.socket.on('data', buffer => {
-      let b = Buffer.concat([this._buffer, buffer]);
-      let offset = 0;
-      let literal = false;
-      let target = 0;
-      for (; offset < b.length; offset++) {
-        if (literal && offset > target) {
-          literal = false;
+      let b = buffer;
+      try {
+        let [response, remaining] = responseFromBuffer(Buffer.concat([this._buffer, b]));
+        while (response !== undefined) {
+          this.responses.push(response);
+          this.emit('receive', response);
+          let next = responseFromBuffer(remaining);
+          response = next[0];
+          remaining = next[1];
         }
-        // CRLF
-        if (b[offset] === 0x0a && b[offset - 1] === 0x0d && !literal) {
-          let slice = b.slice(0, offset + 1);
-          // https://tools.ietf.org/html/rfc3501#section-4.3
-          let match = slice.toString('ascii').match(/^(.+)\{(?<target>(\d+))\}\r\n$/);
-          if (match && match.groups && match.groups.target) {
-            literal = true;
-            target = offset + parseInt(match.groups.target, 10);
-            continue;
-          }
-          try {
-            let response = new Response(slice);
-            this.responses.push(response);
-            this.emit('receive', response);
-            b = b.slice(offset + 1);
-            offset = 0;
-          } catch (error) {
-            this.emit('error', error);
-          }
-        }
+        b = remaining;
+      } catch (error) {
+        this.emit('error', error);
       }
       this._buffer = b;
     });
@@ -367,3 +352,30 @@ export class Connection extends EventEmitter {
 }
 
 export default Connection;
+
+export let responseFromBuffer = (buffer: Buffer): [Response | undefined, Buffer] => {
+  let b = buffer;
+  let offset = 0;
+  let literal = false;
+  let target = 0;
+  for (; offset < b.length; offset++) {
+    if (literal && offset > target) {
+      literal = false;
+    }
+    // CRLF
+    if (b[offset] === 0x0a && b[offset - 1] === 0x0d && !literal) {
+      let slice = b.slice(0, offset + 1);
+      // https://tools.ietf.org/html/rfc3501#section-4.3
+      let match = slice.toString('ascii').match(/^(.+)\{(?<target>(\d+))\}\r\n$/);
+      if (match && match.groups && match.groups.target) {
+        literal = true;
+        target = offset + parseInt(match.groups.target, 10);
+        continue;
+      }
+      let response = new Response(slice);
+
+      return [response, b.slice(offset + 1)];
+    }
+  }
+  return [undefined, b];
+}
