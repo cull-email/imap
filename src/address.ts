@@ -32,6 +32,10 @@ export class Address {
    * @link https://tools.ietf.org/html/rfc2821#appendix-C
    */
   adl?: string;
+
+  toString(): string {
+    return `${this.name} <${this.mailbox}@${this.host}>`;
+  }
 }
 
 export default Address;

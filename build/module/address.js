@@ -16,6 +16,9 @@ export class Address {
          */
         this.host = '';
     }
+    toString() {
+        return `${this.name} <${this.mailbox}@${this.host}>`;
+    }
 }
 export default Address;
 export let parseList = (input) => {

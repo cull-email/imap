@@ -18,7 +18,7 @@ import Message from './message';
 /**
  * __An IMAP Client__
  */
-export default class Client extends EventEmitter {
+export class Client extends EventEmitter {
     constructor(preferences) {
         var _a;
         super();
@@ -323,6 +323,7 @@ export default class Client extends EventEmitter {
         });
     }
 }
+export default Client;
 export let mailboxTree = (map) => {
     let mailboxes = [...map.values()];
     mailboxes.forEach(mailbox => {

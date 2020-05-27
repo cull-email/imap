@@ -52,7 +52,7 @@ export interface Preferences extends ConnectionPreferences {
 /**
  * __An IMAP Client__
  */
-export default class Client extends EventEmitter {
+export class Client extends EventEmitter {
   /**
    * A unique identifier.
    */
@@ -382,31 +382,9 @@ export default class Client extends EventEmitter {
       return Promise.reject(error);
     }
   }
-
-  // async messages(
-  //   mailbox: string = 'INBOX',
-  //   sequence: string = '1:10',
-  //   query: string[] = []
-  // ): Promise<Message[]> {
-  //   try {
-  //     await this.client.connect();
-  //     let messages = await this.client.listMessages(
-  //       mailbox,
-  //       sequence,
-  //       ['uid', 'flags', 'envelope', 'body.peek[]'].concat(query)
-  //     );
-  //     this.client.close();
-  //     return messages.map((m: any) => {
-  //       m.body = ['body[]'];
-  //       return { ...(m as Message), client: this, mailbox };
-  //     });
-  //   } catch (error) {
-  //     return this.client.close().then(() => {
-  //       return Promise.reject(error);
-  //     });
-  //   }
-  // }
 }
+
+export default Client;
 
 export let mailboxTree = (map: Mailboxes): Mailboxes => {
   let mailboxes = [...map.values()];

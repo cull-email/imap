@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mailboxTree = void 0;
+exports.mailboxTree = exports.Client = void 0;
 const uuid_1 = require("uuid");
 const events_1 = require("events");
 const connection_1 = __importDefault(require("./connection"));
@@ -329,6 +329,7 @@ class Client extends events_1.EventEmitter {
         });
     }
 }
+exports.Client = Client;
 exports.default = Client;
 exports.mailboxTree = (map) => {
     let mailboxes = [...map.values()];

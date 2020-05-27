@@ -39,7 +39,7 @@ export interface Preferences extends ConnectionPreferences {
 /**
  * __An IMAP Client__
  */
-export default class Client extends EventEmitter {
+export declare class Client extends EventEmitter {
     /**
      * A unique identifier.
      */
@@ -112,5 +112,5 @@ export default class Client extends EventEmitter {
     messages(name?: string, sequence?: string, items?: string[], timeout?: number): Promise<Messages>;
     headers(name?: string, sequence?: string, timeout?: number): Promise<Headers>;
 }
+export default Client;
 export declare let mailboxTree: (map: Mailboxes) => Mailboxes;
-export {};

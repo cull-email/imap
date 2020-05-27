@@ -24,6 +24,7 @@ export declare class Address {
      * @link https://tools.ietf.org/html/rfc2821#appendix-C
      */
     adl?: string;
+    toString(): string;
 }
 export default Address;
 export declare let parseList: (input: string) => Address[];

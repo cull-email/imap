@@ -1,6 +1,6 @@
 {
   "name": "@cull/imap",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "A simple, configurable javascript interface exposing mailboxes and messages via IMAP.",
   "main": "build/main/index.js",
   "typings": "build/main/index.d.ts",

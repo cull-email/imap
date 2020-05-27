@@ -19,6 +19,9 @@ class Address {
          */
         this.host = '';
     }
+    toString() {
+        return `${this.name} <${this.mailbox}@${this.host}>`;
+    }
 }
 exports.Address = Address;
 exports.default = Address;
