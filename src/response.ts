@@ -218,7 +218,7 @@ export class Response {
   protected parseServerStatusResponse(state: ServerStatus, data: string): void {
     switch (state) {
       case ServerStatus.CAPABILITY:
-        this.data[state] = data.split(` `);
+        this.data[state] = data.split(' ');
         break;
       case ServerStatus.LIST:
         let m = data.match(/^\((.*)\)\s(\S+)\s(.+)$/);
@@ -228,7 +228,7 @@ export class Response {
           }
           let name = unquote(m[3]);
           let delimiter = unquote(m[2]);
-          let attributes = m[1].split(` `).filter(a => a !== '');
+          let attributes = m[1].split(' ').filter(a => a !== '');
           this.data[ServerStatus.LIST].push({ name, delimiter, attributes });
         }
         break;
@@ -237,7 +237,7 @@ export class Response {
           this.data[state] = [];
         }
         let m2 = data.match(/^\((.*)\)$/);
-        this.data[ServerStatus.FLAGS] = m2 ? m2[1].split(` `) : [data];
+        this.data[ServerStatus.FLAGS] = m2 ? m2[1].split(' ') : [data];
         break;
       default:
         throw new Error(`Unprocessed Server State Response: ${state} ${data}`);
@@ -410,10 +410,10 @@ export let extractMessageData = (data: string): MessageData => {
     switch (true) {
       case item === undefined:
         switch (true) {
-          case current === ` ` && buffer === ` `:
+          case current === ' ' && buffer === ' ':
             buffer = '';
             break;
-          case current === ` `:
+          case current === ' ':
             item = buffer.slice(0, -1);
             start = undefined;
             buffer = '';
@@ -451,8 +451,9 @@ export let extractMessageData = (data: string): MessageData => {
         }
         break;
       // Unquoted, non-whitespace string
-      case current === `\s`:
+      case current === ' ':
         result[item] = buffer;
+        item = undefined;
         start = undefined;
         buffer = '';
         break;
