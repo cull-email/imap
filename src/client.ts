@@ -366,7 +366,12 @@ export default class Client extends EventEmitter {
   ): Promise<Headers> {
     try {
       let headers: Headers = new Map();
-      let messages = await this.messages(name, sequence, ['UID', 'FLAGS', 'BODY.PEEK[HEADER]'], timeout);
+      let messages = await this.messages(
+        name,
+        sequence,
+        ['UID', 'FLAGS', 'BODY.PEEK[HEADER]'],
+        timeout
+      );
       messages.forEach((message, key) => {
         if (message.body !== undefined && message.body.HEADER !== undefined) {
           headers.set(key, message.body.HEADER);

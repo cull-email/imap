@@ -378,4 +378,4 @@ export let responseFromBuffer = (buffer: Buffer): [Response | undefined, Buffer]
     }
   }
   return [undefined, b];
-}
+};
