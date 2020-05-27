@@ -6,8 +6,15 @@ import {
   unquote
 } from './patterns';
 
+export let template = compilePattern([
+  namedPattern('name', Patterns.nilOrString),
+  namedPattern('adl', Patterns.nilOrString),
+  namedPattern('mailbox', Patterns.nilOrString),
+  namedPattern('host', Patterns.nilOrString)
+]);
+
 /**
- * __Electronic Mail Address__
+ * __An Electronic Mail Address__
  * @link https://tools.ietf.org/html/rfc3501#section-9
  */
 export class Address {
@@ -33,6 +40,25 @@ export class Address {
    */
   adl?: string;
 
+  constructor(host?: string, mailbox?: string, name?: string, adl?: string) {
+    this.host = host ?? '';
+    this.mailbox = mailbox ?? '';
+    this.name = name;
+    this.adl = adl;
+  }
+
+  /**
+   * Construct an Address given ABNF `address` string form.
+   * @link https://tools.ietf.org/html/rfc3501#section-9
+   * @param address string `(Name ADL Mailbox Host)`
+   */
+  static from(address: string): Address {
+    return parse(address);
+  }
+
+  /**
+   * A string representation of the address, in the form `name <mailbox@host>`
+   */
   toString(): string {
     return `${this.name} <${this.mailbox}@${this.host}>`;
   }
@@ -40,25 +66,27 @@ export class Address {
 
 export default Address;
 
+/**
+ * Construct a collection of Addresses given a parenthesized list of addresses in ABNF form.
+ * @param input string `((name adl mailbox host) (name adl mailbox host))`
+ */
 export let parseList = (input: string): Address[] => {
   let pattern = new RegExp(/\(([^\(\)]+)\)/, 'g');
   let addresses = input.match(pattern) ?? [];
   return addresses.map(parse);
 };
 
+/**
+ * Construct an Address given ABNF `address` string form.
+ * @link https://tools.ietf.org/html/rfc3501#section-9
+ * @param input string `(name adl mailbox host)`
+ */
 export let parse = (input: string): Address => {
   let address: Address = {
     host: '',
     mailbox: ''
   };
-  let patterns = [
-    namedPattern('name', Patterns.nilOrString),
-    namedPattern('adl', Patterns.nilOrString),
-    namedPattern('mailbox', Patterns.nilOrString),
-    namedPattern('host', Patterns.nilOrString)
-  ];
-  let pattern = compilePattern(patterns);
-  let match = deparenthesize(input).match(pattern);
+  let match = deparenthesize(input).match(template);
   if (match && match.groups) {
     let m = match.groups;
     Object.keys(match.groups).forEach(key => {

@@ -1,3 +1,10 @@
+
+/**
+ * __A Mailbox__
+ *
+ * A remote message folder.
+ * @link https://tools.ietf.org/html/rfc3501
+ */
 export interface Mailbox {
   name: string;
   delimiter: string;
@@ -31,6 +38,12 @@ export interface UID {
   validity?: string;
 }
 
+/**
+ * __A Selected Mailbox__
+ *
+ * Identical to an unselected mailbox (a remote message folder) but with additional information.
+ * @link https://tools.ietf.org/html/rfc3501#section-6.3.1
+ */
 export class SelectedMailbox implements Mailbox {
   /**
    * Mailbox name
