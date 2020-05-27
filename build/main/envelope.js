@@ -34,6 +34,10 @@ exports.template = patterns_1.compile([
     patterns_1.named('inReplyTo', patterns_1.default.nilOrString, true),
     patterns_1.named('messageId', patterns_1.default.nilOrString, true)
 ]);
+/**
+ * __An Electronic Mail Message Envelope__
+ * @link https://tools.ietf.org/html/rfc3501#section-2.3.5
+ */
 class Envelope {
     constructor() {
         /**

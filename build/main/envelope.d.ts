@@ -1,5 +1,9 @@
 import Address from './address';
 export declare let template: RegExp;
+/**
+ * __An Electronic Mail Message Envelope__
+ * @link https://tools.ietf.org/html/rfc3501#section-2.3.5
+ */
 export declare class Envelope {
     /**
      * `Message-ID`: A unique message identifier.

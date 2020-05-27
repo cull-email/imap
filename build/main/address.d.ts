@@ -1,5 +1,6 @@
+export declare let template: RegExp;
 /**
- * __Electronic Mail Address__
+ * __An Electronic Mail Address__
  * @link https://tools.ietf.org/html/rfc3501#section-9
  */
 export declare class Address {
@@ -24,8 +25,27 @@ export declare class Address {
      * @link https://tools.ietf.org/html/rfc2821#appendix-C
      */
     adl?: string;
+    constructor(host?: string, mailbox?: string, name?: string, adl?: string);
+    /**
+     * Construct an Address given ABNF `address` string form.
+     * @link https://tools.ietf.org/html/rfc3501#section-9
+     * @param address string `(Name ADL Mailbox Host)`
+     */
+    static from(address: string): Address;
+    /**
+     * A string representation of the address, in the form `name <mailbox@host>`
+     */
     toString(): string;
 }
 export default Address;
+/**
+ * Construct a collection of Addresses given a parenthesized list of addresses in ABNF form.
+ * @param input string `((name adl mailbox host) (name adl mailbox host))`
+ */
 export declare let parseList: (input: string) => Address[];
+/**
+ * Construct an Address given ABNF `address` string form.
+ * @link https://tools.ietf.org/html/rfc3501#section-9
+ * @param input string `(name adl mailbox host)`
+ */
 export declare let parse: (input: string) => Address;

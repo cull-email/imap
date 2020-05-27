@@ -12,6 +12,10 @@ export let template = compilePattern([
     namedPattern('inReplyTo', Patterns.nilOrString, true),
     namedPattern('messageId', Patterns.nilOrString, true)
 ]);
+/**
+ * __An Electronic Mail Message Envelope__
+ * @link https://tools.ietf.org/html/rfc3501#section-2.3.5
+ */
 export class Envelope {
     constructor() {
         /**

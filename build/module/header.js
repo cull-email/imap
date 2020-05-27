@@ -1,4 +1,8 @@
 import { bisect } from './patterns';
+/**
+ * __An Electronic Mail Message Header__
+ * @link https://tools.ietf.org/html/rfc2822#section-2.2
+ */
 export class Header extends Map {
     constructor(source) {
         super();

@@ -1,6 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SelectedMailbox = void 0;
+/**
+ * __A Selected Mailbox__
+ *
+ * Identical to an unselected mailbox (a remote message folder) but with additional information.
+ * @link https://tools.ietf.org/html/rfc3501#section-6.3.1
+ */
 class SelectedMailbox {
     constructor(name) {
         /**

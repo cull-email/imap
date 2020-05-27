@@ -2,6 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Header = void 0;
 const patterns_1 = require("./patterns");
+/**
+ * __An Electronic Mail Message Header__
+ * @link https://tools.ietf.org/html/rfc2822#section-2.2
+ */
 class Header extends Map {
     constructor(source) {
         super();
