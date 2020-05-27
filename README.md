@@ -24,30 +24,28 @@ npm install @cull/imap
 ```js
 import Client from '@cull/imap';
 
-// Instantiate a client connecting to a mailserver
 let c = new Client({
   host: 'mail.example.com',
   user: 'user@example.com',
   pass: 'password',
 });
 
-c.connect().then(() => {
-  // List mailboxes
-  let mailboxes = c.mailboxes();
-
-   // List envelopes for a mailbox path
-  let envelopes = c.envelopes('inbox');
-
-  // List messages for a given sequence range
-  // (1:3 = first, second and third messages)
-  let messages = c.messages('inbox', '1:3');
-});
-
-// Be Kind and Correct - Disconnect ;)
-c.disconnect();
+async () => {
+  try {
+    await c.connect();
+    let mailboxes = await c.mailboxes();
+    let envelopes = await c.envelopes('some/mailbox');
+    let messages = await c.messages('inbox', '1:3');
+    let headers = await c.headers('inbox');
+  } catch (error) {
+    console.error(error);
+  } finally {
+    await c.disconnect();
+  }
+}();
 ```
 
-Alternatively, study the tests.
+Alternatively, study the [tests](https://github.com/cull-email/imap/search?l=TypeScript&q=test).
 
 ## Development
 

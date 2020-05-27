@@ -14,6 +14,7 @@ import { Command } from './command';
 import Mailbox, { SelectedMailbox } from './mailbox';
 import Envelope from './envelope';
 import Message from './message';
+import Header from './header';
 
 /**
  * A collection of server capabilities.
@@ -26,13 +27,17 @@ type Capabilities = Set<string>;
  */
 type Mailboxes = Map<string, Mailbox>;
 /**
- * A collection of envelopes keyed by sequence number.
+ * A collection of envelopes keyed by message sequence number.
  */
 type Envelopes = Map<number, Envelope>;
 /**
  * A collection of messages keyed by sequence number.
  */
 type Messages = Map<number, Message>;
+/**
+ * A collection of headrs keyed by message sequence number.
+ */
+type Headers = Map<number, Header>;
 
 /**
  * User-specified client options analogous to configuration.
@@ -193,17 +198,31 @@ export default class Client extends EventEmitter {
   }
 
   protected analyzeFetchResponseData(data: FetchResponseData): void {
-    data.forEach((message, sequence) => {
-      Object.keys(message).forEach(item => {
+    data.forEach((datum, sequence) => {
+      let message = new Message();
+      Object.keys(datum).forEach(item => {
         switch (item) {
           case MessageDataItem.ENVELOPE:
-            this._envelopes.set(sequence, message[item]);
+            message.envelope = datum[item];
+            break;
+          case MessageDataItem.UID:
+            message.uid = datum[item];
+            break;
+          case MessageDataItem.FLAGS:
+            message.flags = datum[item];
+            break;
+          case MessageDataItem.BODY:
+            message.body = datum[item];
             break;
           default:
             this.emit('debug', `Unhandled message data item: ${item}`);
             break;
         }
       });
+      if (message.envelope !== undefined) {
+        this._envelopes.set(sequence, message.envelope);
+      }
+      this._messages.set(sequence, message);
     });
   }
 
@@ -338,6 +357,25 @@ export default class Client extends EventEmitter {
         return reject(error);
       }
     });
+  }
+
+  async headers(
+    name: string = 'INBOX',
+    sequence: string = '1:10',
+    timeout?: number
+  ): Promise<Headers> {
+    try {
+      let headers: Headers = new Map();
+      let messages = await this.messages(name, sequence, ['UID', 'FLAGS', 'BODY.PEEK[HEADER]'], timeout);
+      messages.forEach((message, key) => {
+        if (message.body !== undefined && message.body.HEADER !== undefined) {
+          headers.set(key, message.body.HEADER);
+        }
+      });
+      return Promise.resolve(headers);
+    } catch (error) {
+      return Promise.reject(error);
+    }
   }
 
   // async messages(

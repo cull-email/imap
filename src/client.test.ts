@@ -53,11 +53,10 @@ test('Client can establish an authenticated connection to an IMAP server.', asyn
   await c.disconnect();
 });
 
-test('Connection can store CAPABILITY data received from the server.', async t => {
+test('Client can store CAPABILITY data received from the server.', async t => {
   let c = testClient(t);
   try {
     await c.connect();
-  } catch (error) {
     t.is(c.connection.state, State.Authenticated);
     t.true([...c.capabilities].length > 0);
     c.capabilities = new Set();
@@ -72,6 +71,8 @@ test('Connection can store CAPABILITY data received from the server.', async t =
     } else {
       t.fail(`Expected a CAPABILITY response.`);
     }
+  } catch (error) {
+    t.fail(error);
   } finally {
     await c.disconnect();
   }
@@ -169,8 +170,22 @@ test('Client can list all messages for a mailbox.', async t => {
   let c = testClient(t);
   try {
     await c.connect();
-    let e = await c.messages();
-    t.is([...e.values()].length, 0);
+    let m = await c.messages('inbox', '1:*', ['UID']);
+    t.is([...m.values()].length, 0);
+  } catch (error) {
+    t.log(error);
+    t.fail('An unexpected error has occurred.');
+  } finally {
+    await c.disconnect();
+  }
+});
+
+test('Client can list all headers for a mailbox.', async t => {
+  let c = testClient(t);
+  try {
+    await c.connect();
+    let h = await c.headers('inbox', '1:*');
+    t.is([...h.values()].length, 0);
   } catch (error) {
     t.log(error);
     t.fail('An unexpected error has occurred.');

@@ -452,7 +452,7 @@ export let extractMessageData = (data: string): MessageData => {
         break;
       // Unquoted, non-whitespace string
       case current === ' ':
-        result[item] = buffer;
+        result[item] = buffer.slice(0, -1);
         item = undefined;
         start = undefined;
         buffer = '';
