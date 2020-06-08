@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parse = exports.parseList = exports.Address = exports.template = void 0;
 const patterns_1 = require("./patterns");
 exports.template = patterns_1.compile([
     patterns_1.named('name', patterns_1.Patterns.nilOrString),

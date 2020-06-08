@@ -27,7 +27,7 @@ export declare let deparenthesize: (input?: string | undefined) => string;
 /**
  * Bisect a string using the first occurrence of whitespace
  */
-export declare let bisect: (input: string) => [undefined | string, string];
+export declare let bisect: (input: string) => [string | undefined, string];
 /**
  * Isolate string literals, escape double quotes, wrap with double quotes
  */

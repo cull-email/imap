@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SelectedMailbox = void 0;
 /**
  * __A Selected Mailbox__
  *

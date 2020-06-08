@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Header = void 0;
 const patterns_1 = require("./patterns");
 /**
  * __An Electronic Mail Message Header__

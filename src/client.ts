@@ -228,15 +228,15 @@ export class Client extends EventEmitter {
 
   /**
    * Get Mailboxes
-   * @link https://tools.ietf.org/html/rfc3501#section-6.3.8
-   * @param flatten (`boolean`, default: `false`) Return a flat array vs a nested array (tree)
-   * @param children (`boolean`, default: `true`) Return children under this hierarchy
    * @param path (`string`, default: empty) The name of a mailbox or level of hierarchy
+   * @param children (`boolean`, default: `true`) Return children under this hierarchy
+   * @param flatten (`boolean`, default: `false`) Return a flat array vs a nested array (tree)
+   * @link https://tools.ietf.org/html/rfc3501#section-6.3.8
    */
   async mailboxes(
-    flatten: boolean = false,
+    path: string = '',
     children: boolean = true,
-    path: string = ''
+    flatten: boolean = false
   ): Promise<Mailboxes> {
     return new Promise(async (resolve, reject) => {
       try {

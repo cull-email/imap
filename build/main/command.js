@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Command = exports.INCREMENTOR = void 0;
 exports.INCREMENTOR = 1;
 /**
  * __An IMAP Client Command__

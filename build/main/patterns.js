@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deliteralize = exports.bisect = exports.deparenthesize = exports.escape = exports.unescape = exports.quote = exports.unquote = exports.compile = exports.named = exports.Patterns = void 0;
 exports.Patterns = {
     string: new RegExp(/(?<!\\)"(.*?)(?<!\\)"/),
     stringLiteralPrefix: new RegExp(/\{(?<octets>\d+)\}\r\n/),

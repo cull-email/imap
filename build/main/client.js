@@ -12,7 +12,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mailboxTree = exports.Client = void 0;
 const uuid_1 = require("uuid");
 const events_1 = require("events");
 const connection_1 = __importDefault(require("./connection"));
@@ -182,12 +181,12 @@ class Client extends events_1.EventEmitter {
     }
     /**
      * Get Mailboxes
-     * @link https://tools.ietf.org/html/rfc3501#section-6.3.8
-     * @param flatten (`boolean`, default: `false`) Return a flat array vs a nested array (tree)
-     * @param children (`boolean`, default: `true`) Return children under this hierarchy
      * @param path (`string`, default: empty) The name of a mailbox or level of hierarchy
+     * @param children (`boolean`, default: `true`) Return children under this hierarchy
+     * @param flatten (`boolean`, default: `false`) Return a flat array vs a nested array (tree)
+     * @link https://tools.ietf.org/html/rfc3501#section-6.3.8
      */
-    mailboxes(flatten = false, children = true, path = '') {
+    mailboxes(path = '', children = true, flatten = false) {
         return __awaiter(this, void 0, void 0, function* () {
             return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 try {

@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ResponseCode = exports.Code = void 0;
 /**
  * Response Code
  * @link https://tools.ietf.org/html/rfc3501#section-7.1

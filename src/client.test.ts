@@ -82,7 +82,7 @@ test('Client can list mailboxes.', async t => {
   let c = testClient(t);
   try {
     await c.connect();
-    let m = await c.mailboxes(true);
+    let m = await c.mailboxes('', true, true);
     let expected: Mailbox[] = [
       {
         attributes: ['\\HasNoChildren'],
