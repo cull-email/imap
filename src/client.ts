@@ -111,6 +111,8 @@ export class Client extends EventEmitter {
   async disconnect(): Promise<boolean> {
     let response = await this.connection.disconnect();
     if (response.status === ResponseStatus.OK) {
+      this.selected = undefined;
+      this.capabilities = new Set();
       return Promise.resolve(true);
     }
     return Promise.reject(response);

@@ -69,6 +69,8 @@ class Client extends events_1.EventEmitter {
         return __awaiter(this, void 0, void 0, function* () {
             let response = yield this.connection.disconnect();
             if (response.status === response_1.Status.OK) {
+                this.selected = undefined;
+                this.capabilities = new Set();
                 return Promise.resolve(true);
             }
             return Promise.reject(response);

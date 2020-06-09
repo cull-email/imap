@@ -193,3 +193,17 @@ test('Client can list all headers for a mailbox.', async t => {
     await c.disconnect();
   }
 });
+
+test('Client resets selected mailbo and capabilities on disconnect.', async t => {
+  let c = testClient(t);
+  try {
+    await c.connect();
+    await c.select('INBOX');
+    t.is(c.selected?.name, 'INBOX');
+    await c.disconnect();
+    t.falsy(c.selected);
+  } catch (error) {
+    t.log(error);
+    t.fail('An unexpected error has occurred.');
+  }
+});
